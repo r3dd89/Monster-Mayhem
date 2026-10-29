@@ -1,0 +1,16 @@
+fileFormatVersion: 2
+guid: b109fe30baa6ae24593d0da3972e0bb6
+timeCreated: 1459899521
+licenseType: Store
+ShaderImporter:
+  defaultTextures: []
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 118154
+  packageName: Sci FI Alien Soldier PolygonR
+  packageVersion: 1.1
+  assetPath: Assets/SciFi_Alien_Soldier_PolygonR/PR_SciFiAlienSoldier_Resources/PR_SciFiAlienSoldier_Shaders/PolygonR_PBR_Character_Multiply.shader
+  uploadId: 364075

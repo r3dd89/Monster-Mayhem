@@ -1,0 +1,17 @@
+fileFormatVersion: 2
+guid: eb2e33d2e190fb345bd9a3b462c4241d
+timeCreated: 1525035562
+licenseType: Store
+NativeFormatImporter:
+  externalObjects: {}
+  mainObjectFileID: 2100000
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 118154
+  packageName: Sci FI Alien Soldier PolygonR
+  packageVersion: 1.1
+  assetPath: Assets/SciFi_Alien_Soldier_PolygonR/PR_SciFiAlienSoldier_Resources/SciFi_Alien_Soldier/PR_SciFiAlienSoldier_Materials_LWRP/M_SciFi_Alien_Soldier_A_3_LWRP.mat
+  uploadId: 364075

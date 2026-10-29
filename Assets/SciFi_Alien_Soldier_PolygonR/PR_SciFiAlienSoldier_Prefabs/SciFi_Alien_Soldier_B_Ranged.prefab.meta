@@ -1,0 +1,17 @@
+fileFormatVersion: 2
+guid: c2a71d1a0a473ef468edefe4335f1d50
+timeCreated: 1525550342
+licenseType: Store
+NativeFormatImporter:
+  externalObjects: {}
+  mainObjectFileID: 100100000
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 118154
+  packageName: Sci FI Alien Soldier PolygonR
+  packageVersion: 1.1
+  assetPath: Assets/SciFi_Alien_Soldier_PolygonR/PR_SciFiAlienSoldier_Prefabs/SciFi_Alien_Soldier_B_Ranged.prefab
+  uploadId: 364075

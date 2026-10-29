@@ -1,0 +1,17 @@
+fileFormatVersion: 2
+guid: 5726400d8f9848b43bfd34a62d61eb9c
+timeCreated: 1525221350
+licenseType: Store
+NativeFormatImporter:
+  externalObjects: {}
+  mainObjectFileID: 2100000
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 118154
+  packageName: Sci FI Alien Soldier PolygonR
+  packageVersion: 1.1
+  assetPath: Assets/SciFi_Alien_Soldier_PolygonR/PR_SciFiAlienSoldier_Resources/SciFi_Alien_Soldier/PR_SciFiAlienSoldier_Meshes/Materials/T_NPC_Alien_Soldier_D.mat
+  uploadId: 364075
