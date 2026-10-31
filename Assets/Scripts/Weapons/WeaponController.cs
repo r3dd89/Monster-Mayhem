@@ -4,8 +4,8 @@ using UnityEngine;
 using UnityEngine.InputSystem;
 
 /// <summary>
-/// Manages hitscan weapon firing, ammunition, and reloading.
-/// Supports mouse and gamepad input through Unity's Input System.
+/// Manages hitscan weapon firing, ammunition, reloading,
+/// and damage against enemies with an EnemyHealth component.
 /// </summary>
 [RequireComponent(typeof(PlayerInput))]
 public class WeaponController : MonoBehaviour
@@ -41,18 +41,18 @@ public class WeaponController : MonoBehaviour
 
     private void Awake()
     {
-        // Cache the camera used for hitscan targeting.
+        // Cache the camera used for raycast targeting.
         playerInput = GetComponent<PlayerInput>();
         playerCamera = playerInput.camera;
 
-        // Initialize ammunition when the player is created.
+        // Initialize the magazine and reserve ammunition.
         currentAmmo = magazineSize;
         reserveAmmo = startingReserveAmmo;
     }
 
     private void OnDisable()
     {
-        // Cancel an active reload if the weapon becomes inactive.
+        // Cancel an active reload when the weapon is disabled.
         StopAllCoroutines();
         isReloading = false;
     }
@@ -62,8 +62,8 @@ public class WeaponController : MonoBehaviour
     #region Weapon Firing
 
     /// <summary>
-    /// Fires a hitscan shot if ammunition is available
-    /// and the weapon is not reloading or on cooldown.
+    /// Fires a hitscan shot and applies damage when
+    /// an enemy is detected by the raycast.
     /// </summary>
     private void Fire()
     {
@@ -83,7 +83,7 @@ public class WeaponController : MonoBehaviour
             return;
         }
 
-        // Consume one round and enforce the weapon's fire rate.
+        // Consume ammunition and enforce the firing interval.
         currentAmmo--;
         nextFireTime = Time.time + fireInterval;
 
@@ -92,7 +92,6 @@ public class WeaponController : MonoBehaviour
             playerCamera.transform.forward
         );
 
-        // Check for the first valid collider hit by the shot.
         if (Physics.Raycast(
             shotRay,
             out RaycastHit hit,
@@ -100,13 +99,22 @@ public class WeaponController : MonoBehaviour
             Physics.DefaultRaycastLayers,
             QueryTriggerInteraction.Ignore))
         {
-            // TODO: Apply damage through the enemy health system.
-            Debug.Log(
-                $"Weapon hit: {hit.collider.name} | Damage: {damage}"
-            );
+            // Check the collider and its parents for enemy health.
+            // This supports characters with colliders on child objects.
+            EnemyHealth enemyHealth =
+                hit.collider.GetComponentInParent<EnemyHealth>();
+
+            if (enemyHealth != null)
+            {
+                enemyHealth.TakeDamage(damage);
+            }
+            else
+            {
+                Debug.Log($"Weapon hit: {hit.collider.name}");
+            }
         }
 
-        // Temporary feedback until the ammunition HUD is implemented.
+        // Temporary ammunition feedback until the HUD is expanded.
         Debug.Log($"Ammo: {currentAmmo}/{reserveAmmo}");
     }
 
@@ -115,8 +123,8 @@ public class WeaponController : MonoBehaviour
     #region Reloading
 
     /// <summary>
-    /// Starts reloading if the magazine is not full
-    /// and reserve ammunition is available.
+    /// Begins reloading when ammunition is available
+    /// and the magazine is not already full.
     /// </summary>
     private void Reload()
     {
@@ -135,8 +143,8 @@ public class WeaponController : MonoBehaviour
     }
 
     /// <summary>
-    /// Waits for the reload duration before transferring
-    /// ammunition from the reserve into the magazine.
+    /// Transfers ammunition from the reserve into the
+    /// magazine after the configured reload duration.
     /// </summary>
     private IEnumerator ReloadRoutine()
     {
@@ -144,10 +152,9 @@ public class WeaponController : MonoBehaviour
 
         Debug.Log("Reloading...");
 
-        // Prevent firing until the reload duration has elapsed.
         yield return new WaitForSeconds(reloadDuration);
 
-        // Load only the ammunition needed to fill the magazine.
+        // Transfer only the rounds needed to refill the magazine.
         int ammoNeeded = magazineSize - currentAmmo;
         int ammoToLoad = Mathf.Min(ammoNeeded, reserveAmmo);
 
@@ -164,9 +171,9 @@ public class WeaponController : MonoBehaviour
     #region Input Callbacks
 
     /// <summary>
-    /// Receives the Attack action from mouse or gamepad input.
+    /// Processes attack input from the mouse or gamepad.
     /// </summary>
-    /// <param name="value">Current attack button state.</param>
+    /// <param name="value">Current attack input state.</param>
     public void OnAttack(InputValue value)
     {
         if (value.isPressed)
@@ -176,9 +183,9 @@ public class WeaponController : MonoBehaviour
     }
 
     /// <summary>
-    /// Receives the Reload action from keyboard or gamepad input.
+    /// Processes reload input from the keyboard or gamepad.
     /// </summary>
-    /// <param name="value">Current reload button state.</param>
+    /// <param name="value">Current reload input state.</param>
     public void OnReload(InputValue value)
     {
         if (value.isPressed)
