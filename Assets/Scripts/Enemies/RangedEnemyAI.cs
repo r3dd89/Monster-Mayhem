@@ -3,8 +3,9 @@ using UnityEngine;
 using UnityEngine.AI;
 
 /// <summary>
-/// Controls ranged enemy detection, navigation, aiming,
-/// shooting, and damage to the player.
+/// Controls ranged enemy navigation, player pursuit,
+/// aiming, shooting, and damage.
+/// Automatically pursues the player after spawning.
 /// </summary>
 [RequireComponent(typeof(NavMeshAgent))]
 [RequireComponent(typeof(Animator))]
@@ -20,52 +21,70 @@ public class RangedEnemyAI : MonoBehaviour
         Aim
     }
 
-    [Header("Current State")]
-    [SerializeField] private RangedState currentState = RangedState.Idle;
-
     #endregion
 
     #region Serialized Fields
 
-    [Header("Player Detection")]
+    [Header("Current State")]
+    [SerializeField] private RangedState currentState = RangedState.Idle;
+
+    [Header("Player Target")]
     [SerializeField] private Transform playerTarget;
-    [SerializeField] private float detectionRange = 20f;
-    [SerializeField] private float attackRange = 12f;
+
+    [Header("Combat Range")]
+    [SerializeField, Min(0.1f)] private float attackRange = 12f;
 
     [Header("Movement Settings")]
-    [SerializeField] private float pathUpdateInterval = 0.2f;
+    [SerializeField, Min(0.05f)] private float pathUpdateInterval = 0.2f;
     [SerializeField] private float rotationSpeed = 360f;
 
     [Header("Ranged Attack")]
-    [SerializeField] private float attackDamage = 10f;
-    [SerializeField] private float attackCooldown = 1.5f;
+    [SerializeField, Min(0f)] private float attackDamage = 10f;
+    [SerializeField, Min(0.1f)] private float attackCooldown = 1.5f;
     [SerializeField] private float shotOriginHeight = 1.4f;
 
     #endregion
 
-    #region Private References
+    #region Private Fields
 
     private NavMeshAgent agent;
     private Animator animator;
     private EnemyHealth enemyHealth;
+    private PlayerHealth playerHealth;
 
     private float nextPathUpdateTime;
     private float nextAttackTime;
+    private float nextPlayerSearchTime;
+
+    private const float PlayerSearchInterval = 1f;
+
+    // Cache frequently used Animator parameters.
+    private static readonly int SpeedHash =
+        Animator.StringToHash("Speed");
+
+    private static readonly int AimingHash =
+        Animator.StringToHash("Aiming");
+
+    private static readonly int ShootHash =
+        Animator.StringToHash("Shoot");
 
     #endregion
 
-    #region Unity Methods
+    #region Unity Lifecycle Methods
 
     private void Awake()
     {
-        // Cache the components required for enemy behavior.
+        // Cache the components required for ranged combat.
         agent = GetComponent<NavMeshAgent>();
         animator = GetComponent<Animator>();
         enemyHealth = GetComponent<EnemyHealth>();
 
-        // Automatically find the player when a scene reference
-        // has not been assigned, such as when spawning a prefab.
-        if (playerTarget == null)
+        // Retrieve the player when no target is assigned.
+        if (playerTarget != null)
+        {
+            playerHealth = playerTarget.GetComponent<PlayerHealth>();
+        }
+        else
         {
             FindPlayer();
         }
@@ -73,41 +92,51 @@ public class RangedEnemyAI : MonoBehaviour
 
     private void Update()
     {
-        // Prevent enemy behavior after death.
+        // Dead enemies cannot continue pursuing or shooting.
         if (enemyHealth.IsDead)
         {
             return;
         }
 
-        // Find the player if the reference is missing.
-        if (playerTarget == null)
+        // Search periodically if the target is missing.
+        if (playerTarget == null &&
+            Time.time >= nextPlayerSearchTime)
         {
             FindPlayer();
 
-            if (playerTarget == null)
-            {
-                return;
-            }
+            nextPlayerSearchTime =
+                Time.time + PlayerSearchInterval;
         }
 
-        // Navigation requires a valid NavMesh.
+        // The agent must be positioned on a valid NavMesh.
         if (!agent.isOnNavMesh)
         {
             return;
         }
 
-        // Determine the distance to the player.
+        // Remain idle when no player is available.
+        if (playerTarget == null)
+        {
+            UpdateIdle();
+            UpdateAnimation();
+            return;
+        }
+
+        // Stop pursuing and shooting after player death.
+        if (playerHealth != null && playerHealth.IsDead)
+        {
+            UpdateIdle();
+            UpdateAnimation();
+            return;
+        }
+
         float distanceToPlayer = Vector3.Distance(
             transform.position,
             playerTarget.position
         );
 
-        // Choose the appropriate behavior.
-        if (distanceToPlayer > detectionRange)
-        {
-            UpdateIdle();
-        }
-        else if (distanceToPlayer > attackRange)
+        // Pursue the player until within shooting range.
+        if (distanceToPlayer > attackRange)
         {
             UpdateChase();
         }
@@ -116,11 +145,7 @@ public class RangedEnemyAI : MonoBehaviour
             UpdateAim();
         }
 
-        // Update the movement animation.
-        animator.SetFloat(
-            "Speed",
-            agent.isStopped ? 0f : agent.velocity.magnitude
-        );
+        UpdateAnimation();
     }
 
     #endregion
@@ -128,18 +153,21 @@ public class RangedEnemyAI : MonoBehaviour
     #region Player Detection
 
     /// <summary>
-    /// Locates the active PlayerHealth component and
-    /// uses its Transform as the enemy's target.
+    /// Locates the active player when an enemy
+    /// is instantiated from its prefab.
     /// </summary>
     private void FindPlayer()
     {
-        PlayerHealth playerHealth =
+        PlayerHealth foundPlayer =
             FindFirstObjectByType<PlayerHealth>();
 
-        if (playerHealth != null)
+        if (foundPlayer == null)
         {
-            playerTarget = playerHealth.transform;
+            return;
         }
+
+        playerHealth = foundPlayer;
+        playerTarget = foundPlayer.transform;
     }
 
     #endregion
@@ -147,8 +175,8 @@ public class RangedEnemyAI : MonoBehaviour
     #region Enemy Behaviors
 
     /// <summary>
-    /// Stops navigation while the player is outside
-    /// the detection range.
+    /// Stops moving and lowers the rifle when
+    /// no valid player target is available.
     /// </summary>
     private void UpdateIdle()
     {
@@ -156,22 +184,24 @@ public class RangedEnemyAI : MonoBehaviour
 
         StopMoving();
 
-        animator.SetBool("Aiming", false);
+        animator.SetBool(AimingHash, false);
     }
 
     /// <summary>
-    /// Pursues the player until they enter attack range.
+    /// Continuously pursues the player until
+    /// the player enters shooting range.
     /// </summary>
     private void UpdateChase()
     {
         currentState = RangedState.Chase;
 
-        animator.SetBool("Aiming", false);
+        // Stop aiming while navigating toward the player.
+        animator.SetBool(AimingHash, false);
 
-        // Resume movement toward the player.
+        // Resume navigation.
         agent.isStopped = false;
 
-        // Refresh the destination periodically.
+        // Refresh the player's destination periodically.
         if (Time.time >= nextPathUpdateTime)
         {
             agent.SetDestination(playerTarget.position);
@@ -182,8 +212,8 @@ public class RangedEnemyAI : MonoBehaviour
     }
 
     /// <summary>
-    /// Stops movement, faces the player, and fires
-    /// when the attack cooldown is complete.
+    /// Stops movement, faces the player, and
+    /// attempts a ranged attack.
     /// </summary>
     private void UpdateAim()
     {
@@ -192,10 +222,9 @@ public class RangedEnemyAI : MonoBehaviour
         StopMoving();
         FacePlayer();
 
-        // Raise the rifle.
-        animator.SetBool("Aiming", true);
+        // Raise the rifle before firing.
+        animator.SetBool(AimingHash, true);
 
-        // Attempt a ranged attack.
         TryShoot();
     }
 
@@ -204,18 +233,18 @@ public class RangedEnemyAI : MonoBehaviour
     #region Ranged Combat
 
     /// <summary>
-    /// Fires a raycast toward the player's collider
-    /// and applies damage when the shot connects.
+    /// Fires a raycast toward the player's collision
+    /// capsule and applies damage on a successful hit.
     /// </summary>
     private void TryShoot()
     {
-        // Wait until the attack cooldown finishes.
+        // Do not fire until the cooldown has completed.
         if (Time.time < nextAttackTime)
         {
             return;
         }
 
-        // Retrieve the player's existing collision capsule.
+        // Use the player's existing CharacterController.
         CharacterController playerCollider =
             playerTarget.GetComponent<CharacterController>();
 
@@ -227,8 +256,8 @@ public class RangedEnemyAI : MonoBehaviour
         // Schedule the next available shot.
         nextAttackTime = Time.time + attackCooldown;
 
-        // Play the rifle shooting animation.
-        animator.SetTrigger("Shoot");
+        // Trigger the rifle shooting animation.
+        animator.SetTrigger(ShootHash);
 
         // Approximate the rifle's firing position.
         Vector3 shotOrigin =
@@ -236,7 +265,7 @@ public class RangedEnemyAI : MonoBehaviour
             Vector3.up * shotOriginHeight +
             transform.forward * 0.65f;
 
-        // Aim at the center of the player's collider.
+        // Aim toward the center of the player's collider.
         Vector3 shotTarget = playerCollider.bounds.center;
 
         Vector3 shotDirection = shotTarget - shotOrigin;
@@ -247,7 +276,8 @@ public class RangedEnemyAI : MonoBehaviour
             return;
         }
 
-        // Fire a raycast toward the player.
+        // Fire toward the player.
+        // Obstacles can block the raycast.
         if (Physics.Raycast(
             shotOrigin,
             shotDirection.normalized,
@@ -256,24 +286,25 @@ public class RangedEnemyAI : MonoBehaviour
             Physics.DefaultRaycastLayers,
             QueryTriggerInteraction.Ignore))
         {
-            // Only damage objects containing PlayerHealth.
-            PlayerHealth playerHealth =
+            PlayerHealth hitPlayer =
                 hit.collider.GetComponentInParent<PlayerHealth>();
 
-            if (playerHealth != null)
+            if (hitPlayer != null && !hitPlayer.IsDead)
             {
-                playerHealth.TakeDamage(attackDamage);
+                hitPlayer.TakeDamage(attackDamage);
             }
         }
 
-        // TODO: Use an actual rifle muzzle Transform
-        // instead of the approximate firing position.
+        // TODO: Replace the approximate shot origin
+        // with a dedicated rifle muzzle Transform.
 
-        // TODO: Add rifle muzzle flashes and impact effects.
+        // TODO: Add muzzle flashes and impact effects.
 
-        // TODO: Add weapon audio and reloading.
+        // TODO: Add rifle shooting audio.
 
-        // TODO: Add a close-range rifle bash attack.
+        // TODO: Implement ammunition and reloading.
+
+        // TODO: Implement close-range rifle bash combat.
     }
 
     #endregion
@@ -281,7 +312,7 @@ public class RangedEnemyAI : MonoBehaviour
     #region Movement Helpers
 
     /// <summary>
-    /// Stops navigation and clears the current path.
+    /// Stops the enemy and clears its navigation path.
     /// </summary>
     private void StopMoving()
     {
@@ -315,6 +346,22 @@ public class RangedEnemyAI : MonoBehaviour
             transform.rotation,
             targetRotation,
             rotationSpeed * Time.deltaTime
+        );
+    }
+
+    #endregion
+
+    #region Animation Handling
+
+    /// <summary>
+    /// Updates the movement animation to match
+    /// the NavMesh Agent's current movement speed.
+    /// </summary>
+    private void UpdateAnimation()
+    {
+        animator.SetFloat(
+            SpeedHash,
+            agent.isStopped ? 0f : agent.velocity.magnitude
         );
     }
 

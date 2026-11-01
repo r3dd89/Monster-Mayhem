@@ -4,9 +4,9 @@ using UnityEngine;
 using UnityEngine.AI;
 
 /// <summary>
-/// Controls enemy detection, navigation, and melee combat.
-/// Uses Idle, Chase, and Attack states to manage enemy behavior.
-/// Supports multiple melee animations through Animator parameters.
+/// Controls melee enemy navigation, player pursuit, and combat.
+/// Automatically finds and pursues the player after spawning.
+/// Uses Chase and Attack states with two melee animations.
 /// </summary>
 [RequireComponent(typeof(NavMeshAgent))]
 [RequireComponent(typeof(EnemyHealth))]
@@ -28,8 +28,7 @@ public class EnemyAI : MonoBehaviour
     [Header("Target Settings")]
     [SerializeField] private Transform playerTarget;
 
-    [Header("Detection Settings")]
-    [SerializeField, Min(0.1f)] private float detectionRange = 12f;
+    [Header("Combat Range")]
     [SerializeField, Min(0.1f)] private float attackRange = 5f;
 
     [Header("Navigation Settings")]
@@ -56,8 +55,12 @@ public class EnemyAI : MonoBehaviour
 
     private float nextPathUpdate;
     private float nextAttackTime;
+    private float nextPlayerSearchTime;
 
-    // Cache Animator parameter IDs for repeated access.
+    // Prevent repeated scene searches every frame.
+    private const float PlayerSearchInterval = 1f;
+
+    // Cache Animator parameter IDs.
     private static readonly int SpeedHash =
         Animator.StringToHash("Speed");
 
@@ -73,7 +76,7 @@ public class EnemyAI : MonoBehaviour
 
     private void Awake()
     {
-        // Cache components required for navigation and combat.
+        // Cache components required for melee enemy behavior.
         navAgent = GetComponent<NavMeshAgent>();
         enemyHealth = GetComponent<EnemyHealth>();
 
@@ -82,32 +85,84 @@ public class EnemyAI : MonoBehaviour
             enemyAnimator = GetComponent<Animator>();
         }
 
-        // Reference the player's health component.
+        // Use an assigned target or locate the player automatically.
         if (playerTarget != null)
         {
             playerHealth = playerTarget.GetComponent<PlayerHealth>();
+        }
+        else
+        {
+            FindPlayer();
         }
     }
 
     private void Update()
     {
-        // Enemy behavior requires a valid target and NavMesh.
-        if (playerTarget == null || !navAgent.isOnNavMesh)
+        // Dead enemies must not continue moving or attacking.
+        if (enemyHealth.IsDead)
         {
             return;
         }
 
-        // Stop pursuing the player when either character dies.
-        if (enemyHealth.IsDead ||
-            (playerHealth != null && playerHealth.IsDead))
+        // Locate the player if the reference is missing.
+        if (playerTarget == null &&
+            Time.time >= nextPlayerSearchTime)
         {
-            StopNavigation();
+            FindPlayer();
+
+            nextPlayerSearchTime =
+                Time.time + PlayerSearchInterval;
+        }
+
+        // Navigation requires an active NavMesh Agent.
+        if (!navAgent.isOnNavMesh)
+        {
+            return;
+        }
+
+        // Remain idle until a valid player is available.
+        if (playerTarget == null)
+        {
+            HandleIdle();
             UpdateAnimation();
             return;
         }
 
+        // Stop pursuing when the player has been defeated.
+        if (playerHealth != null && playerHealth.IsDead)
+        {
+            HandleIdle();
+            UpdateAnimation();
+            return;
+        }
+
+        // Determine whether to chase or attack the player.
         UpdateEnemyState();
+
+        // Synchronize movement with the Animator.
         UpdateAnimation();
+    }
+
+    #endregion
+
+    #region Player Detection
+
+    /// <summary>
+    /// Finds the active player so enemies instantiated
+    /// from prefabs can acquire their target automatically.
+    /// </summary>
+    private void FindPlayer()
+    {
+        PlayerHealth foundPlayer =
+            FindFirstObjectByType<PlayerHealth>();
+
+        if (foundPlayer == null)
+        {
+            return;
+        }
+
+        playerHealth = foundPlayer;
+        playerTarget = foundPlayer.transform;
     }
 
     #endregion
@@ -115,24 +170,21 @@ public class EnemyAI : MonoBehaviour
     #region State Management
 
     /// <summary>
-    /// Determines the current enemy state based on
-    /// the horizontal distance between enemy and player.
+    /// Selects the enemy behavior according to attack distance.
+    /// The enemy no longer requires a detection radius to chase.
     /// </summary>
     private void UpdateEnemyState()
     {
         float distance = GetDistanceToPlayer();
 
+        // Chase from any distance until within melee range.
         if (distance <= attackRange)
         {
             currentState = EnemyState.Attack;
         }
-        else if (distance <= detectionRange)
-        {
-            currentState = EnemyState.Chase;
-        }
         else
         {
-            currentState = EnemyState.Idle;
+            currentState = EnemyState.Chase;
         }
 
         switch (currentState)
@@ -156,32 +208,36 @@ public class EnemyAI : MonoBehaviour
     #region Enemy Behaviors
 
     /// <summary>
-    /// Stops enemy movement when the player is
-    /// outside the detection range.
+    /// Stops navigation when the player is unavailable
+    /// or has been defeated.
     /// </summary>
     private void HandleIdle()
     {
+        currentState = EnemyState.Idle;
         StopNavigation();
     }
 
     /// <summary>
-    /// Pursues the player using NavMesh pathfinding.
+    /// Continuously pursues the player using NavMesh pathfinding.
     /// </summary>
     private void HandleChase()
     {
+        // Allow the agent to move.
         navAgent.isStopped = false;
 
-        // Update the destination at a controlled interval.
+        // Refresh the player's position periodically.
         if (Time.time >= nextPathUpdate)
         {
             navAgent.SetDestination(playerTarget.position);
-            nextPathUpdate = Time.time + pathUpdateInterval;
+
+            nextPathUpdate =
+                Time.time + pathUpdateInterval;
         }
     }
 
     /// <summary>
-    /// Stops movement, faces the player, and performs
-    /// melee attacks when the cooldown allows.
+    /// Stops movement, faces the player, and attacks
+    /// when the melee cooldown has completed.
     /// </summary>
     private void HandleAttack()
     {
@@ -195,7 +251,7 @@ public class EnemyAI : MonoBehaviour
     }
 
     /// <summary>
-    /// Stops navigation without removing the active path.
+    /// Stops movement without clearing the current path.
     /// </summary>
     private void StopNavigation()
     {
@@ -210,12 +266,12 @@ public class EnemyAI : MonoBehaviour
     #region Attack Handling
 
     /// <summary>
-    /// Randomly selects one of two melee animations
-    /// and begins the attack damage sequence.
+    /// Randomly selects one of two melee attacks
+    /// and starts the damage sequence.
     /// </summary>
     private void PerformAttack()
     {
-        // Enforce the cooldown between melee attacks.
+        // Prevent attacks from occurring too frequently.
         nextAttackTime = Time.time + attackCooldown;
 
         if (enemyAnimator != null)
@@ -224,23 +280,23 @@ public class EnemyAI : MonoBehaviour
             // Type 1 selects Melee Attack A.
             int attackType = Random.Range(0, 2);
 
-            // Set the animation variation before triggering it.
             enemyAnimator.SetInteger(TypeHash, attackType);
             enemyAnimator.SetTrigger(AttackHash);
         }
 
+        // Apply damage after the attack windup.
         StartCoroutine(ApplyMeleeDamage());
     }
 
     /// <summary>
-    /// Applies melee damage after the attack windup,
-    /// provided the player remains within attack range.
+    /// Damages the player after the attack delay,
+    /// provided the player remains in melee range.
     /// </summary>
     private IEnumerator ApplyMeleeDamage()
     {
-        // Approximate the impact point of the attack animation.
         yield return new WaitForSeconds(attackHitDelay);
 
+        // Cancel damage if either character is defeated.
         if (enemyHealth.IsDead ||
             playerHealth == null ||
             playerHealth.IsDead)
@@ -248,7 +304,7 @@ public class EnemyAI : MonoBehaviour
             yield break;
         }
 
-        // Cancel the hit if the player escapes attack range.
+        // Do not damage a player who escaped melee range.
         if (GetDistanceToPlayer() > attackRange)
         {
             yield break;
@@ -262,7 +318,7 @@ public class EnemyAI : MonoBehaviour
     #region Rotation Handling
 
     /// <summary>
-    /// Gradually rotates the enemy toward the player.
+    /// Rotates the enemy horizontally toward the player.
     /// </summary>
     private void FacePlayer()
     {
@@ -291,10 +347,9 @@ public class EnemyAI : MonoBehaviour
     #region Utility Methods
 
     /// <summary>
-    /// Calculates horizontal distance between the enemy
-    /// and the player.
+    /// Calculates horizontal distance to the player.
     /// </summary>
-    /// <returns>Horizontal distance in Unity units.</returns>
+    /// <returns>Distance in Unity units.</returns>
     private float GetDistanceToPlayer()
     {
         Vector3 offset =
@@ -310,8 +365,8 @@ public class EnemyAI : MonoBehaviour
     #region Animation Handling
 
     /// <summary>
-    /// Updates locomotion animations according to
-    /// the NavMesh Agent's movement velocity.
+    /// Updates the locomotion animation based on
+    /// the NavMesh Agent's current velocity.
     /// </summary>
     private void UpdateAnimation()
     {
