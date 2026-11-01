@@ -5,9 +5,9 @@ using UnityEngine;
 using UnityEngine.InputSystem;
 
 /// <summary>
-/// Manages hitscan weapon firing, ammunition, reloading,
-/// and damage against enemies with an EnemyHealth component.
-/// Notifies the HUD when ammunition or reload status changes.
+/// Manages hitscan weapon firing, ammunition, manual and
+/// automatic reloading, and damage against enemies.
+/// Notifies the HUD whenever ammunition changes.
 /// </summary>
 [RequireComponent(typeof(PlayerInput))]
 public class WeaponController : MonoBehaviour
@@ -23,6 +23,9 @@ public class WeaponController : MonoBehaviour
     [SerializeField, Min(1)] private int magazineSize = 12;
     [SerializeField, Min(0)] private int startingReserveAmmo = 48;
     [SerializeField, Min(0.1f)] private float reloadDuration = 1.5f;
+
+    [Header("Reload Settings")]
+    [SerializeField] private bool automaticReload = true;
 
     #endregion
 
@@ -51,7 +54,8 @@ public class WeaponController : MonoBehaviour
     #region Events
 
     /// <summary>
-    /// Notifies listeners when magazine or reserve ammo changes.
+    /// Notifies listeners when magazine or reserve
+    /// ammunition changes.
     /// </summary>
     public event Action<int, int> AmmoChanged;
 
@@ -66,18 +70,19 @@ public class WeaponController : MonoBehaviour
 
     private void Awake()
     {
-        // Cache the camera used for raycast targeting.
+        // Cache the PlayerInput and camera references.
         playerInput = GetComponent<PlayerInput>();
         playerCamera = playerInput.camera;
 
-        // Initialize the magazine and reserve ammunition.
+        // Initialize starting ammunition.
         currentAmmo = magazineSize;
         reserveAmmo = startingReserveAmmo;
     }
 
     private void OnDisable()
     {
-        // Cancel an active reload when the weapon is disabled.
+        // Cancel active reloads when the weapon is disabled.
+        // This also prevents reloading after player death.
         StopAllCoroutines();
 
         if (isReloading)
@@ -92,8 +97,8 @@ public class WeaponController : MonoBehaviour
     #region Weapon Firing
 
     /// <summary>
-    /// Fires a hitscan shot and applies damage when
-    /// an enemy is detected by the raycast.
+    /// Fires a hitscan shot, consumes ammunition,
+    /// and automatically reloads when the magazine empties.
     /// </summary>
     private void Fire()
     {
@@ -103,17 +108,28 @@ public class WeaponController : MonoBehaviour
             return;
         }
 
-        // The weapon cannot fire without ammunition.
-        if (currentAmmo <= 0 || playerCamera == null)
+        // Attempt to reload if the magazine is empty.
+        if (currentAmmo <= 0)
+        {
+            if (automaticReload)
+            {
+                TryReload();
+            }
+
+            return;
+        }
+
+        // A valid camera is required for hitscan shooting.
+        if (playerCamera == null)
         {
             return;
         }
 
-        // Consume one round and apply the firing cooldown.
+        // Consume one round and enforce the firing cooldown.
         currentAmmo--;
         nextFireTime = Time.time + fireInterval;
 
-        // Update the ammunition display immediately.
+        // Immediately update the ammunition counter.
         NotifyAmmoChanged();
 
         // Fire from the center of the player's camera.
@@ -129,8 +145,8 @@ public class WeaponController : MonoBehaviour
             Physics.DefaultRaycastLayers,
             QueryTriggerInteraction.Ignore))
         {
-            // Check the collider and its parent objects.
-            // This supports enemies with child colliders.
+            // Search the hit collider and its parents
+            // for an enemy health component.
             EnemyHealth enemyHealth =
                 hit.collider.GetComponentInParent<EnemyHealth>();
 
@@ -140,8 +156,14 @@ public class WeaponController : MonoBehaviour
             }
         }
 
-        // TODO: Add muzzle flash and weapon firing audio.
-        // TODO: Support additional weapon firing modes.
+        // Reload immediately after firing the final round.
+        if (currentAmmo == 0 && automaticReload)
+        {
+            TryReload();
+        }
+
+        // TODO: Add muzzle flashes and weapon firing audio.
+        // TODO: Support additional player weapons.
     }
 
     #endregion
@@ -149,18 +171,24 @@ public class WeaponController : MonoBehaviour
     #region Reloading
 
     /// <summary>
-    /// Begins reloading when ammunition is available
-    /// and the magazine is not already full.
+    /// Starts a reload when the weapon is eligible.
+    /// Supports both manual and automatic reloading.
     /// </summary>
-    private void Reload()
+    private void TryReload()
     {
-        // Prevent unnecessary or overlapping reloads.
-        if (isReloading || currentAmmo >= magazineSize)
+        // Prevent multiple reloads from starting at once.
+        if (isReloading)
         {
             return;
         }
 
-        // Reloading requires reserve ammunition.
+        // Do not reload a full magazine.
+        if (currentAmmo >= magazineSize)
+        {
+            return;
+        }
+
+        // Reserve ammunition is required.
         if (reserveAmmo <= 0)
         {
             return;
@@ -170,32 +198,43 @@ public class WeaponController : MonoBehaviour
     }
 
     /// <summary>
-    /// Transfers ammunition from the reserve into the
-    /// magazine after the configured reload duration.
+    /// Waits for the reload duration, then transfers
+    /// ammunition from the reserve to the magazine.
     /// </summary>
     private IEnumerator ReloadRoutine()
     {
+        // Mark the weapon as reloading.
         isReloading = true;
 
-        // Show the reloading message on the HUD.
+        // Notify other systems that reloading has started.
         ReloadStateChanged?.Invoke(true);
 
+        // Prevent instant ammunition replenishment.
         yield return new WaitForSeconds(reloadDuration);
 
-        // Calculate the number of rounds needed.
+        // Calculate the ammunition required to refill.
         int ammoNeeded = magazineSize - currentAmmo;
 
-        // Do not transfer more rounds than are available.
-        int ammoToLoad = Mathf.Min(ammoNeeded, reserveAmmo);
+        // Transfer only the ammunition currently available.
+        int ammoToLoad = Mathf.Min(
+            ammoNeeded,
+            reserveAmmo
+        );
 
         currentAmmo += ammoToLoad;
         reserveAmmo -= ammoToLoad;
 
+        // The weapon is ready to fire again.
         isReloading = false;
 
-        // Update the counter and hide the reload message.
+        // Update the ammunition counter.
         NotifyAmmoChanged();
+
+        // Notify listeners that reloading has finished.
         ReloadStateChanged?.Invoke(false);
+
+        // TODO: Add a reload animation.
+        // TODO: Add weapon reload audio.
     }
 
     #endregion
@@ -203,26 +242,34 @@ public class WeaponController : MonoBehaviour
     #region Ammunition Management
 
     /// <summary>
-    /// Adds ammunition to the weapon's reserve.
-    /// Intended for future ammunition pickups.
+    /// Adds ammunition to the player's reserve.
+    /// Automatically reloads an empty magazine when enabled.
     /// </summary>
     /// <param name="amount">Number of rounds to add.</param>
     public void AddReserveAmmo(int amount)
     {
+        // Ignore invalid ammunition amounts.
         if (amount <= 0)
         {
             return;
         }
 
-        // Add ammunition without changing the magazine.
+        // Add the collected ammunition to the reserve.
         reserveAmmo += amount;
 
-        // Notify the HUD of the new reserve amount.
+        // Update the ammo HUD immediately.
         NotifyAmmoChanged();
+
+        // Automatically reload if ammunition was collected
+        // while the magazine was completely empty.
+        if (currentAmmo == 0 && automaticReload)
+        {
+            TryReload();
+        }
     }
 
     /// <summary>
-    /// Notifies the HUD of current magazine and reserve ammo.
+    /// Notifies the HUD whenever ammunition changes.
     /// </summary>
     private void NotifyAmmoChanged()
     {
@@ -234,7 +281,7 @@ public class WeaponController : MonoBehaviour
     #region Input Callbacks
 
     /// <summary>
-    /// Processes attack input from the mouse or gamepad.
+    /// Processes attack input from mouse or gamepad.
     /// </summary>
     /// <param name="value">Current attack input state.</param>
     public void OnAttack(InputValue value)
@@ -246,14 +293,14 @@ public class WeaponController : MonoBehaviour
     }
 
     /// <summary>
-    /// Processes reload input from the keyboard or gamepad.
+    /// Processes manual reload input from keyboard or gamepad.
     /// </summary>
     /// <param name="value">Current reload input state.</param>
     public void OnReload(InputValue value)
     {
         if (value.isPressed)
         {
-            Reload();
+            TryReload();
         }
     }
 
