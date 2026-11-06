@@ -5102,11 +5102,10 @@ GameObject:
   m_CorrespondingSourceObject: {fileID: 3308977946641060170, guid: 3b432c552c9125541b67542e0ae6be1e, type: 3}
   m_PrefabInstance: {fileID: 992359973167347877}
   m_PrefabAsset: {fileID: 0}
---- !u!114 &2009396782
+--- !u!114 &2009396782 stripped
 MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
+  m_CorrespondingSourceObject: {fileID: 5525347666431308295, guid: 3b432c552c9125541b67542e0ae6be1e, type: 3}
+  m_PrefabInstance: {fileID: 992359973167347877}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 2009396776}
   m_Enabled: 1
@@ -5114,18 +5113,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: bb228229b2b2dc640aa0ae4cbdfbbef3, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::WeaponController
-  damage: 20
-  fireRange: 100
-  fireInterval: 0.25
-  magazineSize: 12
-  startingReserveAmmo: 48
-  reloadDuration: 1.5
-  automaticReload: 1
---- !u!114 &2009396788
+--- !u!114 &2009396788 stripped
 MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
+  m_CorrespondingSourceObject: {fileID: 127807384485861914, guid: 3b432c552c9125541b67542e0ae6be1e, type: 3}
+  m_PrefabInstance: {fileID: 992359973167347877}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 2009396776}
   m_Enabled: 1
@@ -5133,7 +5124,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 7eb73a78b7b931641bc7af182be40f13, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::PlayerHealth
-  maxHealth: 100
 --- !u!114 &2009396789 stripped
 MonoBehaviour:
   m_CorrespondingSourceObject: {fileID: 5725834724291069053, guid: 3b432c552c9125541b67542e0ae6be1e, type: 3}
@@ -5145,11 +5135,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 3949685416f240d4e8d680c867271a77, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::PlayerLook
---- !u!114 &2009396794
+--- !u!114 &2009396794 stripped
 MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
+  m_CorrespondingSourceObject: {fileID: 3796081605158372163, guid: 3b432c552c9125541b67542e0ae6be1e, type: 3}
+  m_PrefabInstance: {fileID: 992359973167347877}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 2009396776}
   m_Enabled: 1
@@ -5157,8 +5146,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 7f5625aa2400d6441978b0e658865683, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::PlayerPauseInput
-  gameManager: {fileID: 737621092}
-  playerLook: {fileID: 2009396789}
 --- !u!1 &2058315872
 GameObject:
   m_ObjectHideFlags: 0
@@ -5282,31 +5269,18 @@ PrefabInstance:
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
       objectReference: {fileID: 0}
-    - target: {fileID: 1617803383620744263, guid: 3b432c552c9125541b67542e0ae6be1e, type: 3}
-      propertyPath: m_Enabled
-      value: 1
-      objectReference: {fileID: 0}
     - target: {fileID: 3308977946641060170, guid: 3b432c552c9125541b67542e0ae6be1e, type: 3}
       propertyPath: m_Name
       value: Player
       objectReference: {fileID: 0}
-    - target: {fileID: 5725834724291069053, guid: 3b432c552c9125541b67542e0ae6be1e, type: 3}
-      propertyPath: controllerLookSpeed
-      value: 210
-      objectReference: {fileID: 0}
+    - target: {fileID: 3796081605158372163, guid: 3b432c552c9125541b67542e0ae6be1e, type: 3}
+      propertyPath: gameManager
+      value: 
+      objectReference: {fileID: 737621092}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
-    m_AddedComponents:
-    - targetCorrespondingSourceObject: {fileID: 3308977946641060170, guid: 3b432c552c9125541b67542e0ae6be1e, type: 3}
-      insertIndex: -1
-      addedObject: {fileID: 2009396782}
-    - targetCorrespondingSourceObject: {fileID: 3308977946641060170, guid: 3b432c552c9125541b67542e0ae6be1e, type: 3}
-      insertIndex: -1
-      addedObject: {fileID: 2009396788}
-    - targetCorrespondingSourceObject: {fileID: 3308977946641060170, guid: 3b432c552c9125541b67542e0ae6be1e, type: 3}
-      insertIndex: -1
-      addedObject: {fileID: 2009396794}
+    m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: 3b432c552c9125541b67542e0ae6be1e, type: 3}
 --- !u!1001 &5073664391525916798
 PrefabInstance:

@@ -25,37 +25,56 @@ public class RangedEnemyAI : MonoBehaviour
 
     #region Serialized Fields
 
-    [Header("Current State")]
-    [SerializeField] private RangedState currentState = RangedState.Idle;
+    [Header("Component References")]
+    [SerializeField] private NavMeshAgent agent;
+    [SerializeField] private Animator animator;
+    [SerializeField] private EnemyHealth enemyHealth;
 
-    [Header("Player Target")]
+    [Space(10)]
+    [Header("Current State")]
+    [SerializeField]
+    private RangedState currentState =
+        RangedState.Idle;
+
+    [Space(10)]
+    [Header("Target Settings")]
     [SerializeField] private Transform playerTarget;
 
-    [Header("Combat Range")]
-    [SerializeField, Min(0.1f)] private float attackRange = 12f;
+    [Space(10)]
+    [Header("Combat Settings")]
+    [SerializeField, Range(0.1f, 30f)]
+    private float attackRange = 12f;
 
-    [Header("Movement Settings")]
-    [SerializeField, Min(0.05f)] private float pathUpdateInterval = 0.2f;
-    [SerializeField] private float rotationSpeed = 360f;
+    [SerializeField, Range(0f, 50f)]
+    private float attackDamage = 10f;
 
-    [Header("Ranged Attack")]
-    [SerializeField, Min(0f)] private float attackDamage = 10f;
-    [SerializeField, Min(0.1f)] private float attackCooldown = 1.5f;
-    [SerializeField] private float shotOriginHeight = 1.4f;
+    [SerializeField, Range(0.1f, 5f)]
+    private float attackCooldown = 1.5f;
+
+    [Space(10)]
+    [Header("Navigation Settings")]
+    [SerializeField, Range(0.05f, 1f)]
+    private float pathUpdateInterval = 0.2f;
+
+    [SerializeField, Range(90f, 720f)]
+    private float rotationSpeed = 360f;
+
+    [Space(10)]
+    [Header("Shooting Settings")]
+    [SerializeField, Range(0.5f, 3f)]
+    private float shotOriginHeight = 1.4f;
 
     #endregion
 
     #region Private Fields
 
-    private NavMeshAgent agent;
-    private Animator animator;
-    private EnemyHealth enemyHealth;
     private PlayerHealth playerHealth;
 
     private float nextPathUpdateTime;
     private float nextAttackTime;
     private float nextPlayerSearchTime;
 
+    // Prevent repeated scene searches every frame.
     private const float PlayerSearchInterval = 1f;
 
     // Cache frequently used Animator parameters.
@@ -74,15 +93,28 @@ public class RangedEnemyAI : MonoBehaviour
 
     private void Awake()
     {
-        // Cache the components required for ranged combat.
-        agent = GetComponent<NavMeshAgent>();
-        animator = GetComponent<Animator>();
-        enemyHealth = GetComponent<EnemyHealth>();
+        // Locate required components if they
+        // have not been assigned in the Inspector.
+        if (agent == null)
+        {
+            agent = GetComponent<NavMeshAgent>();
+        }
+
+        if (animator == null)
+        {
+            animator = GetComponent<Animator>();
+        }
+
+        if (enemyHealth == null)
+        {
+            enemyHealth = GetComponent<EnemyHealth>();
+        }
 
         // Retrieve the player when no target is assigned.
         if (playerTarget != null)
         {
-            playerHealth = playerTarget.GetComponent<PlayerHealth>();
+            playerHealth =
+                playerTarget.GetComponent<PlayerHealth>();
         }
         else
         {

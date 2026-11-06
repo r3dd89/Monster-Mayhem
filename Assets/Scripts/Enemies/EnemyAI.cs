@@ -25,30 +25,43 @@ public class EnemyAI : MonoBehaviour
 
     #region Serialized Fields
 
+    [Header("Component References")]
+    [SerializeField] private NavMeshAgent navAgent;
+    [SerializeField] private EnemyHealth enemyHealth;
+    [SerializeField] private Animator enemyAnimator;
+
+    [Space(10)]
     [Header("Target Settings")]
     [SerializeField] private Transform playerTarget;
 
-    [Header("Combat Range")]
-    [SerializeField, Min(0.1f)] private float attackRange = 5f;
+    [Space(10)]
+    [Header("Combat Settings")]
 
+    [SerializeField, Range(0.1f, 15f)]
+    private float attackRange = 5f;
+
+    [SerializeField, Range(1f, 50f)]
+    private float attackDamage = 20f;
+
+    [SerializeField, Range(0.1f, 5f)]
+    private float attackCooldown = 1.5f;
+
+    [SerializeField, Range(0f, 2f)]
+    private float attackHitDelay = 0.4f;
+
+    [Space(10)]
     [Header("Navigation Settings")]
-    [SerializeField, Min(0.05f)] private float pathUpdateInterval = 0.2f;
-    [SerializeField] private float rotationSpeed = 360f;
 
-    [Header("Attack Settings")]
-    [SerializeField, Min(1f)] private float attackDamage = 20f;
-    [SerializeField, Min(0.1f)] private float attackCooldown = 1.5f;
-    [SerializeField, Min(0f)] private float attackHitDelay = 0.4f;
+    [SerializeField, Range(0.05f, 1f)]
+    private float pathUpdateInterval = 0.2f;
 
-    [Header("Animation Settings")]
-    [SerializeField] private Animator enemyAnimator;
+    [SerializeField, Range(90f, 720f)]
+    private float rotationSpeed = 360f;
 
     #endregion
 
     #region Private Fields
 
-    private NavMeshAgent navAgent;
-    private EnemyHealth enemyHealth;
     private PlayerHealth playerHealth;
 
     private EnemyState currentState = EnemyState.Idle;
@@ -76,19 +89,29 @@ public class EnemyAI : MonoBehaviour
 
     private void Awake()
     {
-        // Cache components required for melee enemy behavior.
-        navAgent = GetComponent<NavMeshAgent>();
-        enemyHealth = GetComponent<EnemyHealth>();
+        // Locate required components if they
+        // have not been assigned in the Inspector.
+        if (navAgent == null)
+        {
+            navAgent = GetComponent<NavMeshAgent>();
+        }
+
+        if (enemyHealth == null)
+        {
+            enemyHealth = GetComponent<EnemyHealth>();
+        }
 
         if (enemyAnimator == null)
         {
             enemyAnimator = GetComponent<Animator>();
         }
 
-        // Use an assigned target or locate the player automatically.
+        // Use an assigned target or locate
+        // the player automatically.
         if (playerTarget != null)
         {
-            playerHealth = playerTarget.GetComponent<PlayerHealth>();
+            playerHealth =
+                playerTarget.GetComponent<PlayerHealth>();
         }
         else
         {
@@ -128,7 +151,7 @@ public class EnemyAI : MonoBehaviour
             return;
         }
 
-        // Stop pursuing when the player has been defeated.
+        // Stop pursuing when the player is defeated.
         if (playerHealth != null && playerHealth.IsDead)
         {
             HandleIdle();
@@ -136,7 +159,7 @@ public class EnemyAI : MonoBehaviour
             return;
         }
 
-        // Determine whether to chase or attack the player.
+        // Determine whether to chase or attack.
         UpdateEnemyState();
 
         // Synchronize movement with the Animator.
@@ -148,8 +171,8 @@ public class EnemyAI : MonoBehaviour
     #region Player Detection
 
     /// <summary>
-    /// Finds the active player so enemies instantiated
-    /// from prefabs can acquire their target automatically.
+    /// Finds the active player so instantiated
+    /// enemies can acquire their target automatically.
     /// </summary>
     private void FindPlayer()
     {
@@ -170,14 +193,15 @@ public class EnemyAI : MonoBehaviour
     #region State Management
 
     /// <summary>
-    /// Selects the enemy behavior according to attack distance.
-    /// The enemy no longer requires a detection radius to chase.
+    /// Selects enemy behavior according to
+    /// the player's distance.
     /// </summary>
     private void UpdateEnemyState()
     {
         float distance = GetDistanceToPlayer();
 
-        // Chase from any distance until within melee range.
+        // Chase from any distance until
+        // the player enters melee range.
         if (distance <= attackRange)
         {
             currentState = EnemyState.Attack;
@@ -208,8 +232,8 @@ public class EnemyAI : MonoBehaviour
     #region Enemy Behaviors
 
     /// <summary>
-    /// Stops navigation when the player is unavailable
-    /// or has been defeated.
+    /// Stops navigation when the player is
+    /// unavailable or has been defeated.
     /// </summary>
     private void HandleIdle()
     {
@@ -218,14 +242,15 @@ public class EnemyAI : MonoBehaviour
     }
 
     /// <summary>
-    /// Continuously pursues the player using NavMesh pathfinding.
+    /// Continuously pursues the player
+    /// using NavMesh pathfinding.
     /// </summary>
     private void HandleChase()
     {
         // Allow the agent to move.
         navAgent.isStopped = false;
 
-        // Refresh the player's position periodically.
+        // Refresh the destination periodically.
         if (Time.time >= nextPathUpdate)
         {
             navAgent.SetDestination(playerTarget.position);
@@ -236,8 +261,8 @@ public class EnemyAI : MonoBehaviour
     }
 
     /// <summary>
-    /// Stops movement, faces the player, and attacks
-    /// when the melee cooldown has completed.
+    /// Stops movement, faces the player, and
+    /// attacks when the cooldown has completed.
     /// </summary>
     private void HandleAttack()
     {
@@ -251,7 +276,8 @@ public class EnemyAI : MonoBehaviour
     }
 
     /// <summary>
-    /// Stops movement without clearing the current path.
+    /// Stops movement without clearing
+    /// the current navigation path.
     /// </summary>
     private void StopNavigation()
     {
@@ -266,8 +292,8 @@ public class EnemyAI : MonoBehaviour
     #region Attack Handling
 
     /// <summary>
-    /// Randomly selects one of two melee attacks
-    /// and starts the damage sequence.
+    /// Randomly selects one of two melee
+    /// animations and starts the damage sequence.
     /// </summary>
     private void PerformAttack()
     {
@@ -318,7 +344,8 @@ public class EnemyAI : MonoBehaviour
     #region Rotation Handling
 
     /// <summary>
-    /// Rotates the enemy horizontally toward the player.
+    /// Rotates the enemy horizontally
+    /// toward the player.
     /// </summary>
     private void FacePlayer()
     {
@@ -347,9 +374,9 @@ public class EnemyAI : MonoBehaviour
     #region Utility Methods
 
     /// <summary>
-    /// Calculates horizontal distance to the player.
+    /// Calculates horizontal distance
+    /// between the enemy and player.
     /// </summary>
-    /// <returns>Distance in Unity units.</returns>
     private float GetDistanceToPlayer()
     {
         Vector3 offset =
@@ -365,8 +392,8 @@ public class EnemyAI : MonoBehaviour
     #region Animation Handling
 
     /// <summary>
-    /// Updates the locomotion animation based on
-    /// the NavMesh Agent's current velocity.
+    /// Updates the locomotion animation
+    /// based on the NavMesh Agent's velocity.
     /// </summary>
     private void UpdateAnimation()
     {

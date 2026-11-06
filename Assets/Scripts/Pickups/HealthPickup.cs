@@ -2,8 +2,9 @@
 using UnityEngine;
 
 /// <summary>
-/// Restores player health when the player enters the pickup trigger.
-/// The pickup is consumed only when the player needs healing.
+/// Restores player health when the player enters or
+/// remains inside the pickup trigger.
+/// The pickup is consumed only when healing is needed.
 /// </summary>
 [RequireComponent(typeof(Collider))]
 public class HealthPickup : MonoBehaviour
@@ -11,7 +12,8 @@ public class HealthPickup : MonoBehaviour
     #region Serialized Fields
 
     [Header("Pickup Settings")]
-    [SerializeField, Min(1f)] private float healAmount = 25f;
+    [SerializeField, Min(1f)]
+    private float healAmount = 25f;
 
     #endregion
 
@@ -24,23 +26,45 @@ public class HealthPickup : MonoBehaviour
     #region Trigger Handling
 
     /// <summary>
-    /// Checks whether the player entered the pickup's trigger.
-    /// Restores health and removes the pickup when collected.
+    /// Attempts collection when the Player first
+    /// enters the pickup trigger.
     /// </summary>
-    /// <param name="other">Collider entering the trigger.</param>
     private void OnTriggerEnter(Collider other)
     {
-        // Prevent the pickup from being collected multiple times.
+        TryCollect(other);
+    }
+
+    /// <summary>
+    /// Checks again while the Player remains inside
+    /// the trigger to improve collection reliability.
+    /// </summary>
+    private void OnTriggerStay(Collider other)
+    {
+        TryCollect(other);
+    }
+
+    #endregion
+
+    #region Pickup Collection
+
+    /// <summary>
+    /// Validates the Player's health and collects
+    /// the pickup when healing is possible.
+    /// </summary>
+    private void TryCollect(Collider other)
+    {
+        // Prevent duplicate collection.
         if (isCollected)
         {
             return;
         }
 
-        // Find PlayerHealth on the entering object or its parent.
+        // Find PlayerHealth on the entering collider
+        // or one of its parent GameObjects.
         PlayerHealth playerHealth =
             other.GetComponentInParent<PlayerHealth>();
 
-        // Ignore enemies and objects without PlayerHealth.
+        // Ignore enemies and unrelated objects.
         if (playerHealth == null)
         {
             return;
@@ -52,19 +76,20 @@ public class HealthPickup : MonoBehaviour
             return;
         }
 
-        // Keep the pickup available if health is already full.
-        if (playerHealth.CurrentHealth >= playerHealth.MaxHealth)
+        // Preserve the pickup when health is full.
+        if (playerHealth.CurrentHealth >=
+            playerHealth.MaxHealth)
         {
             return;
         }
 
-        // Mark the pickup as collected.
+        // Prevent additional collection attempts.
         isCollected = true;
 
-        // Restore health using the existing PlayerHealth system.
+        // Restore health through the existing system.
         playerHealth.Heal(healAmount);
 
-        // Remove the pickup after successful collection.
+        // Remove the collected pickup.
         Destroy(gameObject);
     }
 

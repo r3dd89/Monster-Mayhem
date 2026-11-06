@@ -2,9 +2,9 @@
 using UnityEngine;
 
 /// <summary>
-/// Adds reserve ammunition when the player enters
-/// the pickup trigger. The pickup is destroyed after
-/// successful collection.
+/// Adds reserve ammunition when the player enters or
+/// remains inside the pickup trigger.
+/// The pickup is destroyed after successful collection.
 /// </summary>
 [RequireComponent(typeof(Collider))]
 public class AmmoPickup : MonoBehaviour
@@ -12,7 +12,8 @@ public class AmmoPickup : MonoBehaviour
     #region Serialized Fields
 
     [Header("Ammo Pickup Settings")]
-    [SerializeField, Min(1)] private int ammoAmount = 24;
+    [SerializeField, Min(1)]
+    private int ammoAmount = 24;
 
     #endregion
 
@@ -25,42 +26,76 @@ public class AmmoPickup : MonoBehaviour
     #region Trigger Handling
 
     /// <summary>
-    /// Checks whether the player entered the pickup trigger
-    /// and adds ammunition to the player's reserve.
+    /// Attempts collection when the Player first
+    /// enters the pickup trigger.
     /// </summary>
     /// <param name="other">Collider entering the trigger.</param>
     private void OnTriggerEnter(Collider other)
     {
-        // Prevent collecting the same pickup multiple times.
+        TryCollect(other);
+    }
+
+    /// <summary>
+    /// Attempts collection again while the Player
+    /// remains inside the trigger.
+    /// </summary>
+    /// <param name="other">Collider inside the trigger.</param>
+    private void OnTriggerStay(Collider other)
+    {
+        TryCollect(other);
+    }
+
+    #endregion
+
+    #region Pickup Collection
+
+    /// <summary>
+    /// Validates the Player and adds ammunition
+    /// using the existing WeaponController.
+    /// </summary>
+    /// <param name="other">Collider attempting collection.</param>
+    private void TryCollect(Collider other)
+    {
+        // Prevent the same pickup from being
+        // collected more than once.
         if (isCollected)
         {
             return;
         }
 
-        // Confirm that the entering object belongs to the player.
+        // Identify the Player using PlayerHealth.
         PlayerHealth playerHealth =
             other.GetComponentInParent<PlayerHealth>();
 
-        if (playerHealth == null || playerHealth.IsDead)
+        // Ignore enemies and unrelated objects.
+        if (playerHealth == null)
         {
             return;
         }
 
-        // Get the player's existing weapon controller.
+        // Dead players cannot collect ammunition.
+        if (playerHealth.IsDead)
+        {
+            return;
+        }
+
+        // Find the existing Player weapon controller.
         WeaponController weaponController =
             playerHealth.GetComponent<WeaponController>();
 
-        // Do not collect ammunition if the weapon is unavailable.
+        // Do not collect ammunition if the weapon
+        // controller is missing or disabled.
         if (weaponController == null ||
             !weaponController.isActiveAndEnabled)
         {
             return;
         }
 
-        // Mark the pickup as collected before modifying ammo.
+        // Prevent duplicate collection attempts.
         isCollected = true;
 
-        // Add ammunition using the existing weapon system.
+        // Add reserve ammunition using the
+        // existing weapon system.
         weaponController.AddReserveAmmo(ammoAmount);
 
         // Remove the pickup after successful collection.
