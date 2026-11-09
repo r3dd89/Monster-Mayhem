@@ -13,7 +13,8 @@ public class PlayerHealth : MonoBehaviour
     #region Serialized Fields
 
     [Header("Health Settings")]
-    [SerializeField, Min(1f)] private float maxHealth = 100f;
+    [SerializeField, Min(1f)]
+    private float maxHealth = 100f;
 
     #endregion
 

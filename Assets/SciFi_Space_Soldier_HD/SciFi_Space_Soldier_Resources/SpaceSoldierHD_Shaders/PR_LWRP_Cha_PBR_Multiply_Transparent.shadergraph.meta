@@ -1,0 +1,17 @@
+fileFormatVersion: 2
+guid: fdaaf7374fe82ef40ba6ddf30358387e
+ScriptedImporter:
+  internalIDToNameTable: []
+  externalObjects: {}
+  serializedVersion: 2
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+  script: {fileID: 11500000, guid: 625f186215c104763be7675aa2d941aa, type: 3}
+AssetOrigin:
+  serializedVersion: 1
+  productId: 130834
+  packageName: Sci Fi Space Soldier Male HD
+  packageVersion: 1.1
+  assetPath: Assets/SciFi_Space_Soldier_HD/SciFi_Space_Soldier_Resources/SpaceSoldierHD_Shaders/PR_LWRP_Cha_PBR_Multiply_Transparent.shadergraph
+  uploadId: 364218

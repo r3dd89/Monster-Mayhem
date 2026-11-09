@@ -1,0 +1,17 @@
+fileFormatVersion: 2
+guid: 26f0a0d0fca28aa4da165407c6f2bcc5
+timeCreated: 1539550971
+licenseType: Store
+NativeFormatImporter:
+  externalObjects: {}
+  mainObjectFileID: 100100000
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 130834
+  packageName: Sci Fi Space Soldier Male HD
+  packageVersion: 1.1
+  assetPath: Assets/SciFi_Space_Soldier_HD/SpaceSoldierHD_Prefabs_LWRP/SK_Space_Soldier_Male_HD_LOD0_B_05_LWRP.prefab
+  uploadId: 364218

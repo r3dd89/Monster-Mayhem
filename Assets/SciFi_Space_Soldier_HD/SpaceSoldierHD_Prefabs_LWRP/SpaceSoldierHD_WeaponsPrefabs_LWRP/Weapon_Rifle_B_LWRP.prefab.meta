@@ -1,0 +1,17 @@
+fileFormatVersion: 2
+guid: 5352d3d286e462144858542b1f92ee2b
+timeCreated: 1539737890
+licenseType: Store
+NativeFormatImporter:
+  externalObjects: {}
+  mainObjectFileID: 100100000
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 130834
+  packageName: Sci Fi Space Soldier Male HD
+  packageVersion: 1.1
+  assetPath: Assets/SciFi_Space_Soldier_HD/SpaceSoldierHD_Prefabs_LWRP/SpaceSoldierHD_WeaponsPrefabs_LWRP/Weapon_Rifle_B_LWRP.prefab
+  uploadId: 364218

@@ -1,0 +1,16 @@
+fileFormatVersion: 2
+guid: 28a9fe5febf8b6f438e78fa9a8a33ad9
+timeCreated: 1459899521
+licenseType: Store
+ShaderImporter:
+  defaultTextures: []
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 130834
+  packageName: Sci Fi Space Soldier Male HD
+  packageVersion: 1.1
+  assetPath: Assets/SciFi_Space_Soldier_HD/SciFi_Space_Soldier_Resources/SpaceSoldierHD_Shaders/SpaceSoldier_Male_HD_PBR.shader
+  uploadId: 364218

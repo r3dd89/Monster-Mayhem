@@ -1,0 +1,17 @@
+fileFormatVersion: 2
+guid: 24393f93ae0e95847bc1b7648291c89c
+timeCreated: 1539474676
+licenseType: Store
+ShaderImporter:
+  externalObjects: {}
+  defaultTextures: []
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 130834
+  packageName: Sci Fi Space Soldier Male HD
+  packageVersion: 1.1
+  assetPath: Assets/SciFi_Space_Soldier_HD/SciFi_Space_Soldier_Resources/SpaceSoldierHD_Shaders/PolygonR_PBR_Character_Overlay.shader
+  uploadId: 364218

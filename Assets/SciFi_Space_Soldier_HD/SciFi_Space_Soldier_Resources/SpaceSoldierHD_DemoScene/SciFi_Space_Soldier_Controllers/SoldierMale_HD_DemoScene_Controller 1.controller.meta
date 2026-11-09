@@ -1,0 +1,17 @@
+fileFormatVersion: 2
+guid: 6220a29d3389f244ba08e963a0302b65
+timeCreated: 1539550022
+licenseType: Store
+NativeFormatImporter:
+  externalObjects: {}
+  mainObjectFileID: 9100000
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 130834
+  packageName: Sci Fi Space Soldier Male HD
+  packageVersion: 1.1
+  assetPath: Assets/SciFi_Space_Soldier_HD/SciFi_Space_Soldier_Resources/SpaceSoldierHD_DemoScene/SciFi_Space_Soldier_Controllers/SoldierMale_HD_DemoScene_Controller 1.controller
+  uploadId: 364218

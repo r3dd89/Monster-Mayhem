@@ -10,8 +10,8 @@ ScriptedImporter:
   script: {fileID: 11500000, guid: 60072b568d64c40a485e0fc55012dc9f, type: 3}
 AssetOrigin:
   serializedVersion: 1
-  productId: 118154
-  packageName: Sci FI Alien Soldier PolygonR
+  productId: 130834
+  packageName: Sci Fi Space Soldier Male HD
   packageVersion: 1.1
   assetPath: Assets/SciFi_Alien_Soldier_PolygonR/PR_SciFiAlienSoldier_Resources/PR_SciFiAlienSoldier_Shaders/Cha_BaseColor_Overlay_Node.shadersubgraph
-  uploadId: 364075
+  uploadId: 364218

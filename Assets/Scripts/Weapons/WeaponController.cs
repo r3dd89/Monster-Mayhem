@@ -5,9 +5,9 @@ using UnityEngine;
 using UnityEngine.InputSystem;
 
 /// <summary>
-/// Manages hitscan weapon firing, ammunition, manual and
-/// automatic reloading, and damage against enemies.
-/// Notifies the HUD whenever ammunition changes.
+/// Controls player hitscan shooting, automatic fire,
+/// ammunition, reloading, aiming, and weapon animations.
+/// Uses WeaponShotEffects for visuals and audio.
 /// </summary>
 [RequireComponent(typeof(PlayerInput))]
 public class WeaponController : MonoBehaviour
@@ -15,17 +15,54 @@ public class WeaponController : MonoBehaviour
     #region Serialized Fields
 
     [Header("Weapon Settings")]
-    [SerializeField] private float damage = 20f;
-    [SerializeField] private float fireRange = 100f;
-    [SerializeField] private float fireInterval = 0.25f;
+    [SerializeField, Range(1f, 100f)]
+    private float damage = 20f;
+
+    [SerializeField, Range(10f, 250f)]
+    private float fireRange = 100f;
+
+    [SerializeField, Range(0.05f, 2f)]
+    private float fireInterval = 0.25f;
 
     [Header("Ammunition Settings")]
-    [SerializeField, Min(1)] private int magazineSize = 12;
-    [SerializeField, Min(0)] private int startingReserveAmmo = 48;
-    [SerializeField, Min(0.1f)] private float reloadDuration = 1.5f;
+    [SerializeField, Min(1)]
+    private int magazineSize = 12;
+
+    [SerializeField, Min(0)]
+    private int startingReserveAmmo = 48;
+
+    [SerializeField, Range(0.1f, 5f)]
+    private float reloadDuration = 1.5f;
 
     [Header("Reload Settings")]
-    [SerializeField] private bool automaticReload = true;
+    [SerializeField]
+    private bool automaticReload = true;
+
+    [Header("Animation Settings")]
+    [SerializeField]
+    private Animator soldierAnimator;
+
+    [Header("FPS Animation Settings")]
+    [SerializeField]
+    private Animator fpsAnimator;
+
+    [Header("Aim Settings")]
+    [SerializeField]
+    private Transform fpsWeaponTransform;
+
+    [SerializeField, Range(1f, 30f)]
+    private float aimTransitionSpeed = 12f;
+
+    [SerializeField]
+    private Vector3 aimPosition =
+        new Vector3(-0.035f, -1.262f, 0.152f);
+
+    [SerializeField]
+    private Vector3 aimRotation = Vector3.zero;
+
+    [Header("Weapon Effects")]
+    [SerializeField]
+    private WeaponShotEffects weaponShotEffects;
 
     #endregion
 
@@ -34,11 +71,23 @@ public class WeaponController : MonoBehaviour
     private PlayerInput playerInput;
     private Camera playerCamera;
 
+    private InputAction attackAction;
+    private InputAction aimAction;
+
     private int currentAmmo;
     private int reserveAmmo;
 
     private float nextFireTime;
+
     private bool isReloading;
+    private bool isAiming;
+    private bool isFiringHeld;
+
+    private Vector3 hipFirePosition;
+    private Quaternion hipFireRotation;
+
+    private bool hasFpsAimParameter;
+    private bool hasFpsReloadParameter;
 
     #endregion
 
@@ -48,20 +97,14 @@ public class WeaponController : MonoBehaviour
     public int ReserveAmmo => reserveAmmo;
     public int MagazineSize => magazineSize;
     public bool IsReloading => isReloading;
+    public bool IsAiming => isAiming;
 
     #endregion
 
     #region Events
 
-    /// <summary>
-    /// Notifies listeners when magazine or reserve
-    /// ammunition changes.
-    /// </summary>
     public event Action<int, int> AmmoChanged;
 
-    /// <summary>
-    /// Notifies listeners when reloading starts or finishes.
-    /// </summary>
     public event Action<bool> ReloadStateChanged;
 
     #endregion
@@ -70,26 +113,104 @@ public class WeaponController : MonoBehaviour
 
     private void Awake()
     {
-        // Cache the PlayerInput and camera references.
         playerInput = GetComponent<PlayerInput>();
+
         playerCamera = playerInput.camera;
 
-        // Initialize starting ammunition.
+        if (playerCamera == null)
+        {
+            playerCamera = GetComponentInChildren<Camera>();
+        }
+
         currentAmmo = magazineSize;
         reserveAmmo = startingReserveAmmo;
+
+        isReloading = false;
+        isAiming = false;
+        isFiringHeld = false;
+
+        // Preserve the existing hip-fire positioning.
+        if (fpsWeaponTransform != null)
+        {
+            hipFirePosition =
+                fpsWeaponTransform.localPosition;
+
+            hipFireRotation =
+                fpsWeaponTransform.localRotation;
+        }
+
+        // Check the Easy FPS Animator's parameters.
+        if (fpsAnimator != null &&
+            fpsAnimator.runtimeAnimatorController != null)
+        {
+            hasFpsAimParameter =
+                HasBoolParameter(fpsAnimator, "aiming");
+
+            hasFpsReloadParameter =
+                HasBoolParameter(fpsAnimator, "reloading");
+        }
+    }
+
+    private void Start()
+    {
+        // Find the existing Input System actions.
+        if (playerInput.actions != null)
+        {
+            attackAction =
+                playerInput.actions.FindAction("Attack", false);
+
+            aimAction =
+                playerInput.actions.FindAction("Aim", false);
+        }
+
+        NotifyAmmoChanged();
+        UpdateAnimationStates();
+    }
+
+    private void Update()
+    {
+        // Do not process weapon inputs while paused.
+        if (Time.timeScale <= 0f)
+        {
+            return;
+        }
+
+        // Read the fire button continuously.
+        if (attackAction != null)
+        {
+            isFiringHeld = attackAction.IsPressed();
+        }
+
+        // Read the aim button continuously.
+        if (aimAction != null)
+        {
+            SetAiming(aimAction.IsPressed());
+        }
+
+        // Allow automatic fire in hip-fire and ADS.
+        if (isFiringHeld && !isReloading)
+        {
+            Fire();
+        }
+
+        // Smoothly move between hip-fire and ADS.
+        UpdateAimPosition();
     }
 
     private void OnDisable()
     {
-        // Cancel active reloads when the weapon is disabled.
-        // This also prevents reloading after player death.
         StopAllCoroutines();
+
+        isFiringHeld = false;
+        isAiming = false;
 
         if (isReloading)
         {
             isReloading = false;
             ReloadStateChanged?.Invoke(false);
         }
+
+        UpdateAnimationStates();
     }
 
     #endregion
@@ -97,46 +218,59 @@ public class WeaponController : MonoBehaviour
     #region Weapon Firing
 
     /// <summary>
-    /// Fires a hitscan shot, consumes ammunition,
-    /// and automatically reloads when the magazine empties.
+    /// Fires one hitscan shot when the cooldown allows.
+    /// Plays visual and audio effects for each shot.
     /// </summary>
     private void Fire()
     {
-        // Prevent firing during a reload or weapon cooldown.
+        // Prevent firing during reload or cooldown.
         if (isReloading || Time.time < nextFireTime)
         {
             return;
         }
 
-        // Attempt to reload if the magazine is empty.
+        // Handle an empty magazine.
         if (currentAmmo <= 0)
         {
-            if (automaticReload)
+            nextFireTime = Time.time + fireInterval;
+
+            if (automaticReload && reserveAmmo > 0)
             {
                 TryReload();
+            }
+            else if (weaponShotEffects != null)
+            {
+                weaponShotEffects.PlayEmpty();
             }
 
             return;
         }
 
-        // A valid camera is required for hitscan shooting.
         if (playerCamera == null)
         {
             return;
         }
 
-        // Consume one round and enforce the firing cooldown.
+        // Consume a round.
         currentAmmo--;
+
         nextFireTime = Time.time + fireInterval;
 
-        // Immediately update the ammunition counter.
         NotifyAmmoChanged();
 
-        // Fire from the center of the player's camera.
+        // The camera determines where the shot lands,
+        // even when the visible weapon is off-center.
         Ray shotRay = new Ray(
             playerCamera.transform.position,
             playerCamera.transform.forward
         );
+
+        Vector3 hitPosition =
+            shotRay.GetPoint(fireRange);
+
+        Vector3 hitNormal = Vector3.up;
+
+        bool hasHit = false;
 
         if (Physics.Raycast(
             shotRay,
@@ -145,8 +279,12 @@ public class WeaponController : MonoBehaviour
             Physics.DefaultRaycastLayers,
             QueryTriggerInteraction.Ignore))
         {
-            // Search the hit collider and its parents
-            // for an enemy health component.
+            hasHit = true;
+
+            hitPosition = hit.point;
+            hitNormal = hit.normal;
+
+            // Preserve the existing enemy damage system.
             EnemyHealth enemyHealth =
                 hit.collider.GetComponentInParent<EnemyHealth>();
 
@@ -156,14 +294,82 @@ public class WeaponController : MonoBehaviour
             }
         }
 
-        // Reload immediately after firing the final round.
+        // Play the gunshot, muzzle flash, tracer,
+        // and optional bullet impact.
+        if (weaponShotEffects != null)
+        {
+            weaponShotEffects.PlayShot(
+                hitPosition,
+                hitNormal,
+                hasHit
+            );
+        }
+
+        // Immediately reload after the last round.
         if (currentAmmo == 0 && automaticReload)
         {
             TryReload();
         }
 
-        // TODO: Add muzzle flashes and weapon firing audio.
-        // TODO: Support additional player weapons.
+        // TODO: Add an FPS firing/recoil animation
+        // once its Animator state is confirmed.
+        // TODO: Support additional weapons.
+    }
+
+    #endregion
+
+    #region Weapon Aiming
+
+    /// <summary>
+    /// Updates the held aiming state.
+    /// </summary>
+    private void SetAiming(bool aiming)
+    {
+        if (isAiming == aiming)
+        {
+            return;
+        }
+
+        isAiming = aiming;
+
+        UpdateAnimationStates();
+    }
+
+    /// <summary>
+    /// Moves the visible rifle between the saved
+    /// hip-fire position and the ADS position.
+    /// </summary>
+    private void UpdateAimPosition()
+    {
+        if (fpsWeaponTransform == null)
+        {
+            return;
+        }
+
+        Vector3 targetPosition = isAiming
+            ? aimPosition
+            : hipFirePosition;
+
+        Quaternion targetRotation = isAiming
+            ? Quaternion.Euler(aimRotation)
+            : hipFireRotation;
+
+        float transition = Mathf.Clamp01(
+            aimTransitionSpeed * Time.deltaTime
+        );
+
+        fpsWeaponTransform.localPosition = Vector3.Lerp(
+            fpsWeaponTransform.localPosition,
+            targetPosition,
+            transition
+        );
+
+        fpsWeaponTransform.localRotation =
+            Quaternion.Slerp(
+                fpsWeaponTransform.localRotation,
+                targetRotation,
+                transition
+            );
     }
 
     #endregion
@@ -171,25 +377,13 @@ public class WeaponController : MonoBehaviour
     #region Reloading
 
     /// <summary>
-    /// Starts a reload when the weapon is eligible.
-    /// Supports both manual and automatic reloading.
+    /// Starts reloading when the magazine needs ammo.
     /// </summary>
     private void TryReload()
     {
-        // Prevent multiple reloads from starting at once.
-        if (isReloading)
-        {
-            return;
-        }
-
-        // Do not reload a full magazine.
-        if (currentAmmo >= magazineSize)
-        {
-            return;
-        }
-
-        // Reserve ammunition is required.
-        if (reserveAmmo <= 0)
+        if (isReloading ||
+            currentAmmo >= magazineSize ||
+            reserveAmmo <= 0)
         {
             return;
         }
@@ -198,24 +392,27 @@ public class WeaponController : MonoBehaviour
     }
 
     /// <summary>
-    /// Waits for the reload duration, then transfers
-    /// ammunition from the reserve to the magazine.
+    /// Plays the reload animation and sound,
+    /// then transfers reserve ammunition.
     /// </summary>
     private IEnumerator ReloadRoutine()
     {
-        // Mark the weapon as reloading.
         isReloading = true;
 
-        // Notify other systems that reloading has started.
         ReloadStateChanged?.Invoke(true);
 
-        // Prevent instant ammunition replenishment.
+        UpdateAnimationStates();
+
+        // Play the existing reload sound.
+        if (weaponShotEffects != null)
+        {
+            weaponShotEffects.PlayReload();
+        }
+
         yield return new WaitForSeconds(reloadDuration);
 
-        // Calculate the ammunition required to refill.
         int ammoNeeded = magazineSize - currentAmmo;
 
-        // Transfer only the ammunition currently available.
         int ammoToLoad = Mathf.Min(
             ammoNeeded,
             reserveAmmo
@@ -224,17 +421,81 @@ public class WeaponController : MonoBehaviour
         currentAmmo += ammoToLoad;
         reserveAmmo -= ammoToLoad;
 
-        // The weapon is ready to fire again.
         isReloading = false;
 
-        // Update the ammunition counter.
         NotifyAmmoChanged();
 
-        // Notify listeners that reloading has finished.
         ReloadStateChanged?.Invoke(false);
 
-        // TODO: Add a reload animation.
-        // TODO: Add weapon reload audio.
+        UpdateAnimationStates();
+
+        // TODO: Add a magazine animation event.
+    }
+
+    #endregion
+
+    #region Animation Management
+
+    /// <summary>
+    /// Updates the PolygonR and Easy FPS Animators.
+    /// </summary>
+    private void UpdateAnimationStates()
+    {
+        // Preserve the original soldier parameters.
+        if (soldierAnimator != null)
+        {
+            soldierAnimator.SetBool(
+                "Reloading",
+                isReloading
+            );
+
+            soldierAnimator.SetBool(
+                "Aiming",
+                isAiming
+            );
+        }
+
+        // Use the lowercase Easy FPS parameters.
+        if (fpsAnimator != null)
+        {
+            if (hasFpsReloadParameter)
+            {
+                fpsAnimator.SetBool(
+                    "reloading",
+                    isReloading
+                );
+            }
+
+            if (hasFpsAimParameter)
+            {
+                fpsAnimator.SetBool(
+                    "aiming",
+                    isAiming && !isReloading
+                );
+            }
+        }
+    }
+
+    /// <summary>
+    /// Checks whether an Animator contains
+    /// a specified Bool parameter.
+    /// </summary>
+    private bool HasBoolParameter(
+        Animator animator,
+        string parameterName)
+    {
+        foreach (AnimatorControllerParameter parameter
+                 in animator.parameters)
+        {
+            if (parameter.name == parameterName &&
+                parameter.type ==
+                AnimatorControllerParameterType.Bool)
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     #endregion
@@ -242,35 +503,25 @@ public class WeaponController : MonoBehaviour
     #region Ammunition Management
 
     /// <summary>
-    /// Adds ammunition to the player's reserve.
-    /// Automatically reloads an empty magazine when enabled.
+    /// Adds ammunition to the reserve from pickups.
     /// </summary>
-    /// <param name="amount">Number of rounds to add.</param>
     public void AddReserveAmmo(int amount)
     {
-        // Ignore invalid ammunition amounts.
         if (amount <= 0)
         {
             return;
         }
 
-        // Add the collected ammunition to the reserve.
         reserveAmmo += amount;
 
-        // Update the ammo HUD immediately.
         NotifyAmmoChanged();
 
-        // Automatically reload if ammunition was collected
-        // while the magazine was completely empty.
         if (currentAmmo == 0 && automaticReload)
         {
             TryReload();
         }
     }
 
-    /// <summary>
-    /// Notifies the HUD whenever ammunition changes.
-    /// </summary>
     private void NotifyAmmoChanged()
     {
         AmmoChanged?.Invoke(currentAmmo, reserveAmmo);
@@ -281,27 +532,35 @@ public class WeaponController : MonoBehaviour
     #region Input Callbacks
 
     /// <summary>
-    /// Processes attack input from mouse or gamepad.
+    /// Handles mouse and controller attack input.
     /// </summary>
-    /// <param name="value">Current attack input state.</param>
     public void OnAttack(InputValue value)
     {
-        if (value.isPressed)
+        isFiringHeld = value.isPressed;
+
+        if (isFiringHeld && Time.timeScale > 0f)
         {
             Fire();
         }
     }
 
     /// <summary>
-    /// Processes manual reload input from keyboard or gamepad.
+    /// Handles manual reload input.
     /// </summary>
-    /// <param name="value">Current reload input state.</param>
     public void OnReload(InputValue value)
     {
-        if (value.isPressed)
+        if (value.isPressed && Time.timeScale > 0f)
         {
             TryReload();
         }
+    }
+
+    /// <summary>
+    /// Handles mouse and controller aiming input.
+    /// </summary>
+    public void OnAim(InputValue value)
+    {
+        SetAiming(value.isPressed);
     }
 
     #endregion

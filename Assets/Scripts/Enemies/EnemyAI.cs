@@ -7,6 +7,7 @@ using UnityEngine.AI;
 /// Controls melee enemy navigation, player pursuit, and combat.
 /// Automatically finds and pursues the player after spawning.
 /// Uses Chase and Attack states with two melee animations.
+/// Plays detection and attack sounds during combat.
 /// </summary>
 [RequireComponent(typeof(NavMeshAgent))]
 [RequireComponent(typeof(EnemyHealth))]
@@ -58,6 +59,30 @@ public class EnemyAI : MonoBehaviour
     [SerializeField, Range(90f, 720f)]
     private float rotationSpeed = 360f;
 
+    [Space(10)]
+    [Header("Enemy Audio Settings")]
+
+    [SerializeField]
+    private AudioSource enemyAudioSource;
+
+    [Space(10)]
+    [Header("Detection Audio Settings")]
+
+    [SerializeField]
+    private AudioClip[] detectionSounds;
+
+    [SerializeField, Range(0f, 1f)]
+    private float detectionVolume = 0.9f;
+
+    [Space(10)]
+    [Header("Attack Audio Settings")]
+
+    [SerializeField]
+    private AudioClip[] attackSounds;
+
+    [SerializeField, Range(0f, 1f)]
+    private float attackVolume = 0.8f;
+
     #endregion
 
     #region Private Fields
@@ -72,6 +97,10 @@ public class EnemyAI : MonoBehaviour
 
     // Prevent repeated scene searches every frame.
     private const float PlayerSearchInterval = 1f;
+
+    // Prevent the detection screech from playing
+    // repeatedly while chasing the player.
+    private bool hasPlayedDetectionSound;
 
     // Cache Animator parameter IDs.
     private static readonly int SpeedHash =
@@ -105,6 +134,16 @@ public class EnemyAI : MonoBehaviour
         {
             enemyAnimator = GetComponent<Animator>();
         }
+
+        // Find an existing AudioSource if available.
+        // EnemyHealth may also use this AudioSource.
+        if (enemyAudioSource == null)
+        {
+            enemyAudioSource = GetComponent<AudioSource>();
+        }
+
+        // Reset detection audio for this enemy instance.
+        hasPlayedDetectionSound = false;
 
         // Use an assigned target or locate
         // the player automatically.
@@ -200,6 +239,15 @@ public class EnemyAI : MonoBehaviour
     {
         float distance = GetDistanceToPlayer();
 
+        // Play one detection screech when the
+        // enemy first begins engaging the player.
+        if (!hasPlayedDetectionSound)
+        {
+            PlayDetectionSound();
+
+            hasPlayedDetectionSound = true;
+        }
+
         // Chase from any distance until
         // the player enters melee range.
         if (distance <= attackRange)
@@ -293,7 +341,8 @@ public class EnemyAI : MonoBehaviour
 
     /// <summary>
     /// Randomly selects one of two melee
-    /// animations and starts the damage sequence.
+    /// animations, plays attack audio,
+    /// and starts the damage sequence.
     /// </summary>
     private void PerformAttack()
     {
@@ -309,6 +358,10 @@ public class EnemyAI : MonoBehaviour
             enemyAnimator.SetInteger(TypeHash, attackType);
             enemyAnimator.SetTrigger(AttackHash);
         }
+
+        // Play an attack sound when the
+        // melee attack animation starts.
+        PlayAttackSound();
 
         // Apply damage after the attack windup.
         StartCoroutine(ApplyMeleeDamage());
@@ -337,6 +390,132 @@ public class EnemyAI : MonoBehaviour
         }
 
         playerHealth.TakeDamage(attackDamage);
+    }
+
+    #endregion
+
+    #region Enemy Audio Handling
+
+    /// <summary>
+    /// Plays a random detection screech when
+    /// the enemy first begins pursuing the player.
+    /// </summary>
+    private void PlayDetectionSound()
+    {
+        PlayRandomSound(
+            detectionSounds,
+            detectionVolume
+        );
+    }
+
+    /// <summary>
+    /// Plays a random attack sound whenever
+    /// a new melee attack begins.
+    /// </summary>
+    private void PlayAttackSound()
+    {
+        PlayRandomSound(
+            attackSounds,
+            attackVolume
+        );
+    }
+
+    /// <summary>
+    /// Selects a random assigned clip and
+    /// plays it using the enemy's AudioSource.
+    /// </summary>
+    private void PlayRandomSound(
+        AudioClip[] sounds,
+        float volume)
+    {
+        if (sounds == null || sounds.Length == 0)
+        {
+            return;
+        }
+
+        // Ignore empty audio slots.
+        int validCount = 0;
+
+        for (int i = 0; i < sounds.Length; i++)
+        {
+            if (sounds[i] != null)
+            {
+                validCount++;
+            }
+        }
+
+        if (validCount == 0)
+        {
+            return;
+        }
+
+        // Pick a random valid sound.
+        int selectedIndex = Random.Range(
+            0,
+            validCount
+        );
+
+        for (int i = 0; i < sounds.Length; i++)
+        {
+            if (sounds[i] == null)
+            {
+                continue;
+            }
+
+            if (selectedIndex == 0)
+            {
+                PlayEnemySound(
+                    sounds[i],
+                    volume
+                );
+
+                return;
+            }
+
+            selectedIndex--;
+        }
+    }
+
+    /// <summary>
+    /// Plays enemy audio without interrupting
+    /// existing attack, damage, or death sounds.
+    /// </summary>
+    private void PlayEnemySound(
+        AudioClip clip,
+        float volume)
+    {
+        if (clip == null)
+        {
+            return;
+        }
+
+        // EnemyHealth can create an AudioSource
+        // during its own Awake method, so search
+        // again before creating another source.
+        if (enemyAudioSource == null)
+        {
+            enemyAudioSource =
+                GetComponent<AudioSource>();
+        }
+
+        // Create a 3D AudioSource only if the
+        // enemy still does not have one.
+        if (enemyAudioSource == null)
+        {
+            enemyAudioSource =
+                gameObject.AddComponent<AudioSource>();
+
+            enemyAudioSource.playOnAwake = false;
+            enemyAudioSource.loop = false;
+            enemyAudioSource.spatialBlend = 1f;
+            enemyAudioSource.minDistance = 2f;
+            enemyAudioSource.maxDistance = 20f;
+        }
+
+        enemyAudioSource.PlayOneShot(
+            clip,
+            volume
+        );
     }
 
     #endregion

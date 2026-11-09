@@ -4,8 +4,8 @@ using UnityEngine.InputSystem;
 
 /// <summary>
 /// Handles first-person camera rotation for mouse and gamepad.
-/// Provides adjustable controller sensitivity, response curves,
-/// deadzone, and smoothing for more precise aiming.
+/// Provides adjustable sensitivity, controller response curves,
+/// deadzone, smoothing, and vertical camera limits.
 /// </summary>
 [RequireComponent(typeof(PlayerInput))]
 public class PlayerLook : MonoBehaviour
@@ -13,27 +13,38 @@ public class PlayerLook : MonoBehaviour
     #region Serialized Fields
 
     [Header("Mouse Settings")]
-    [SerializeField, Min(0f)]
+
+    [Tooltip("Controls how quickly the camera rotates when moving the mouse.")]
+    [SerializeField, Range(0f, 1f)]
     private float mouseSensitivity = 0.1f;
 
     [Header("Controller Sensitivity")]
-    [SerializeField, Min(0f)]
+
+    [Tooltip("Horizontal camera rotation speed for the right analog stick.")]
+    [SerializeField, Range(0f, 500f)]
     private float controllerLookSpeed = 210f;
 
-    [SerializeField, Min(0f)]
+    [Tooltip("Vertical camera rotation speed for the right analog stick.")]
+    [SerializeField, Range(0f, 500f)]
     private float controllerVerticalLookSpeed = 170f;
 
     [Header("Controller Response")]
+
+    [Tooltip("Ignores small analog stick movements to prevent unwanted camera drift.")]
     [SerializeField, Range(0f, 0.3f)]
     private float controllerDeadzone = 0.03f;
 
+    [Tooltip("Higher values provide finer aiming near the center of the analog stick.")]
     [SerializeField, Range(1f, 3f)]
     private float controllerResponseCurve = 1.6f;
 
+    [Tooltip("Smooths controller camera movement. Set to zero to disable smoothing.")]
     [SerializeField, Range(0f, 0.2f)]
     private float controllerSmoothingTime = 0.04f;
 
     [Header("Camera Limits")]
+
+    [Tooltip("Maximum vertical angle the player can look up or down.")]
     [SerializeField, Range(45f, 89f)]
     private float maxLookAngle = 80f;
 
@@ -81,29 +92,36 @@ public class PlayerLook : MonoBehaviour
         }
 
         // Locate the existing Look input action.
-        lookAction = playerInput.actions.FindAction("Look");
+        if (playerInput.actions != null)
+        {
+            lookAction = playerInput.actions.FindAction(
+                "Look",
+                false
+            );
+        }
     }
 
     private void Start()
     {
-        // Lock the cursor during active gameplay.
+        // Lock and hide the cursor during gameplay.
         Cursor.lockState = CursorLockMode.Locked;
         Cursor.visible = false;
     }
 
     private void Update()
     {
+        // Process the player's camera movement.
         HandleLook();
     }
 
     private void OnDisable()
     {
-        // Reset look input when gameplay is disabled.
+        // Clear look input when controls are disabled.
         lookInput = Vector2.zero;
         smoothedControllerInput = Vector2.zero;
         controllerSmoothVelocity = Vector2.zero;
 
-        // Release the cursor for menus.
+        // Release the cursor for menus and death screens.
         Cursor.lockState = CursorLockMode.None;
         Cursor.visible = true;
     }
@@ -113,17 +131,19 @@ public class PlayerLook : MonoBehaviour
     #region Camera Rotation
 
     /// <summary>
-    /// Determines the current input device and processes
-    /// mouse and controller aiming independently.
+    /// Determines the active input device and processes
+    /// mouse and controller movement independently.
     /// </summary>
     private void HandleLook()
     {
+        // A camera and valid delta time are required.
         if (playerCamera == null || Time.deltaTime <= 0f)
         {
             return;
         }
 
-        // Identify the device currently driving Look.
+        // Determine whether the Look action is
+        // currently controlled by a gamepad.
         bool usingGamepad =
             lookAction != null &&
             lookAction.activeControl?.device is Gamepad;
@@ -136,6 +156,7 @@ public class PlayerLook : MonoBehaviour
             wasUsingGamepad = usingGamepad;
         }
 
+        // Apply the appropriate look calculations.
         if (usingGamepad)
         {
             HandleControllerLook();
@@ -147,29 +168,32 @@ public class PlayerLook : MonoBehaviour
     }
 
     /// <summary>
-    /// Applies direct mouse movement without controller
-    /// acceleration or smoothing.
+    /// Applies mouse movement directly without
+    /// controller smoothing or acceleration.
     /// </summary>
     private void HandleMouseLook()
     {
+        // Convert mouse input into camera rotation.
         Vector2 rotation = lookInput * mouseSensitivity;
 
-        ApplyRotation(rotation.x, rotation.y);
+        ApplyRotation(
+            rotation.x,
+            rotation.y
+        );
     }
 
     /// <summary>
     /// Applies deadzone, response curve, and smoothing
-    /// before rotating the camera with the right stick.
+    /// before processing right-stick camera movement.
     /// </summary>
     private void HandleControllerLook()
     {
-        // Process the analog stick for precision aiming.
+        // Process the analog stick input.
         Vector2 targetInput = ProcessControllerInput(
             lookInput
         );
 
-        // Stop immediately when the stick is released
-        // to prevent unwanted camera drift.
+        // Immediately stop when the stick is released.
         if (targetInput.sqrMagnitude <= 0.000001f)
         {
             smoothedControllerInput = Vector2.zero;
@@ -187,10 +211,11 @@ public class PlayerLook : MonoBehaviour
         }
         else
         {
+            // Apply direct controller input.
             smoothedControllerInput = targetInput;
         }
 
-        // Convert stick movement into degrees per second.
+        // Convert analog input into degrees per second.
         float horizontalRotation =
             smoothedControllerInput.x *
             controllerLookSpeed *
@@ -209,27 +234,27 @@ public class PlayerLook : MonoBehaviour
 
     /// <summary>
     /// Applies an additional radial deadzone and response
-    /// curve to processed gamepad stick input.
+    /// curve to processed gamepad input.
     /// </summary>
     private Vector2 ProcessControllerInput(Vector2 input)
     {
+        // Limit the input magnitude to a valid range.
         float magnitude = Mathf.Clamp01(input.magnitude);
 
-        // Ignore tiny movements near stick center.
+        // Ignore small movements around stick center.
         if (magnitude <= controllerDeadzone)
         {
             return Vector2.zero;
         }
 
-        // Map the usable stick range to zero through one.
+        // Map the usable stick range from zero to one.
         float adjustedMagnitude = Mathf.InverseLerp(
             controllerDeadzone,
             1f,
             magnitude
         );
 
-        // Higher curve values provide finer control
-        // near the center of the analog stick.
+        // Apply the controller response curve.
         float curvedMagnitude = Mathf.Pow(
             adjustedMagnitude,
             controllerResponseCurve
@@ -252,7 +277,7 @@ public class PlayerLook : MonoBehaviour
             Vector3.up * horizontalRotation
         );
 
-        // Update and clamp the camera pitch.
+        // Update and clamp vertical camera rotation.
         cameraPitch -= verticalRotation;
 
         cameraPitch = Mathf.Clamp(
@@ -261,7 +286,8 @@ public class PlayerLook : MonoBehaviour
             maxLookAngle
         );
 
-        // Apply pitch without rotating the Player body.
+        // Rotate the camera vertically without
+        // changing the Player's horizontal rotation.
         playerCamera.localRotation = Quaternion.Euler(
             cameraPitch,
             0f,
@@ -274,8 +300,8 @@ public class PlayerLook : MonoBehaviour
     #region Input Callbacks
 
     /// <summary>
-    /// Receives mouse delta or right-stick input from
-    /// the existing Look action.
+    /// Receives mouse delta or right-stick input
+    /// from the existing Look action.
     /// </summary>
     /// <param name="value">Two-dimensional look input.</param>
     public void OnLook(InputValue value)

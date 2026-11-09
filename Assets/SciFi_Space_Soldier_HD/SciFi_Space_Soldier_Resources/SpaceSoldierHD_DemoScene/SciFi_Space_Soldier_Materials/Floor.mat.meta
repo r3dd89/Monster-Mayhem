@@ -1,0 +1,17 @@
+fileFormatVersion: 2
+guid: 6412b127c15048e4f8a181bdd2987cb9
+timeCreated: 1539548045
+licenseType: Store
+NativeFormatImporter:
+  externalObjects: {}
+  mainObjectFileID: 2100000
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 130834
+  packageName: Sci Fi Space Soldier Male HD
+  packageVersion: 1.1
+  assetPath: Assets/SciFi_Space_Soldier_HD/SciFi_Space_Soldier_Resources/SpaceSoldierHD_DemoScene/SciFi_Space_Soldier_Materials/Floor.mat
+  uploadId: 364218

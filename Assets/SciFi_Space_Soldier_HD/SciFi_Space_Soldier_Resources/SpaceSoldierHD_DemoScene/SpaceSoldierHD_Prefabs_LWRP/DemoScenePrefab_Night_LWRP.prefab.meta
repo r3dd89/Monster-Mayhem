@@ -1,0 +1,17 @@
+fileFormatVersion: 2
+guid: 07238eef892d51143b31ef9681b6fe2b
+timeCreated: 1539553176
+licenseType: Store
+NativeFormatImporter:
+  externalObjects: {}
+  mainObjectFileID: 100100000
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 130834
+  packageName: Sci Fi Space Soldier Male HD
+  packageVersion: 1.1
+  assetPath: Assets/SciFi_Space_Soldier_HD/SciFi_Space_Soldier_Resources/SpaceSoldierHD_DemoScene/SpaceSoldierHD_Prefabs_LWRP/DemoScenePrefab_Night_LWRP.prefab
+  uploadId: 364218
