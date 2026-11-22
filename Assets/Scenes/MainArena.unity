@@ -3591,6 +3591,10 @@ PrefabInstance:
       propertyPath: m_Name
       value: Wave Manager
       objectReference: {fileID: 0}
+    - target: {fileID: 7866302759521684912, guid: 88207529fb9646d41936a7f7c766546e, type: 3}
+      propertyPath: m_IsActive
+      value: 0
+      objectReference: {fileID: 0}
     - target: {fileID: 8193529193397176936, guid: 88207529fb9646d41936a7f7c766546e, type: 3}
       propertyPath: spawnPoints.Array.size
       value: 3
@@ -3617,7 +3621,7 @@ MonoBehaviour:
   m_CorrespondingSourceObject: {fileID: 8193529193397176936, guid: 88207529fb9646d41936a7f7c766546e, type: 3}
   m_PrefabInstance: {fileID: 412246250}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 0}
+  m_GameObject: {fileID: 641192784}
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: b07a8d7895f40e447b552d38059f10be, type: 3}
@@ -4565,11 +4569,11 @@ PrefabInstance:
     m_Modifications:
     - target: {fileID: 927015144245293181, guid: 73abcdc95b14fe94282a830fdc19bfe3, type: 3}
       propertyPath: m_LocalPosition.x
-      value: 0.96
+      value: 1.34
       objectReference: {fileID: 0}
     - target: {fileID: 927015144245293181, guid: 73abcdc95b14fe94282a830fdc19bfe3, type: 3}
       propertyPath: m_LocalPosition.z
-      value: -21.02
+      value: -18.23
       objectReference: {fileID: 0}
     - target: {fileID: 1735090674183529557, guid: 73abcdc95b14fe94282a830fdc19bfe3, type: 3}
       propertyPath: m_Name
@@ -4633,7 +4637,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 8599365743517489394, guid: 73abcdc95b14fe94282a830fdc19bfe3, type: 3}
       propertyPath: m_LocalPosition.z
-      value: 1.5
+      value: 0.21
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects:
@@ -5824,6 +5828,11 @@ PrefabInstance:
 Transform:
   m_CorrespondingSourceObject: {fileID: 423358, guid: 94aa6bb10a2084bbb842e5fe1b92578f, type: 3}
   m_PrefabInstance: {fileID: 640790606}
+  m_PrefabAsset: {fileID: 0}
+--- !u!1 &641192784 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 7866302759521684912, guid: 88207529fb9646d41936a7f7c766546e, type: 3}
+  m_PrefabInstance: {fileID: 412246250}
   m_PrefabAsset: {fileID: 0}
 --- !u!114 &642384848
 MonoBehaviour:
@@ -8830,23 +8839,23 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 4151559095525055403, guid: 8faab5424da4dd34c9c94d8d8f984f32, type: 3}
       propertyPath: m_LocalPosition.x
-      value: 14.55
+      value: 13.29
       objectReference: {fileID: 0}
     - target: {fileID: 4151559095525055403, guid: 8faab5424da4dd34c9c94d8d8f984f32, type: 3}
       propertyPath: m_LocalPosition.y
-      value: -0.3
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 4151559095525055403, guid: 8faab5424da4dd34c9c94d8d8f984f32, type: 3}
       propertyPath: m_LocalPosition.z
-      value: 4.22
+      value: 12.94
       objectReference: {fileID: 0}
     - target: {fileID: 5973708622377168349, guid: 8faab5424da4dd34c9c94d8d8f984f32, type: 3}
       propertyPath: m_LocalPosition.x
-      value: 10.7059
+      value: 13.54
       objectReference: {fileID: 0}
     - target: {fileID: 5973708622377168349, guid: 8faab5424da4dd34c9c94d8d8f984f32, type: 3}
       propertyPath: m_LocalPosition.y
-      value: -0.903
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 5973708622377168349, guid: 8faab5424da4dd34c9c94d8d8f984f32, type: 3}
       propertyPath: m_LocalPosition.z
@@ -15982,7 +15991,19 @@ MonoBehaviour:
   closeSoundVolume: 1
   onFullyOpened:
     m_PersistentCalls:
-      m_Calls: []
+      m_Calls:
+      - m_Target: {fileID: 641192784}
+        m_TargetAssemblyTypeName: UnityEngine.GameObject, UnityEngine
+        m_MethodName: SetActive
+        m_Mode: 6
+        m_Arguments:
+          m_ObjectArgument: {fileID: 0}
+          m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
+          m_IntArgument: 0
+          m_FloatArgument: 0
+          m_StringArgument: 
+          m_BoolArgument: 1
+        m_CallState: 2
 --- !u!65 &1346135438
 BoxCollider:
   m_ObjectHideFlags: 0
